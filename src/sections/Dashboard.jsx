@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { C, CHART_COLORS } from "../ui/theme";
 import { fmt, fmtMoney, fmtDate, monthKey, today } from "../lib/format";
+import { saleKg } from "../lib/sales";
 import { Card, StatCard, Badge } from "../ui";
 
 // ─── DASHBOARD (com gráficos) ─────────────────────────────────────────────────
@@ -32,7 +33,7 @@ export default function Dashboard({ data }) {
 
   const fruitByType = useMemo(() => {
     const m = {};
-    data.fruitSales.forEach(x => { m[x.type] = (m[x.type] || 0) + Number(x.qty || 0); });
+    data.fruitSales.forEach(x => { m[x.type] = (m[x.type] || 0) + saleKg(x); });
     return Object.entries(m).map(([name, value]) => ({ name, value }));
   }, [data]);
 
