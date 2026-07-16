@@ -1,6 +1,6 @@
 import * as XLSX from "xlsx";
 import { today } from "./format";
-import { saleKg } from "./sales";
+import { saleKg, buyerSummary } from "./sales";
 
 // ─── EXCEL EXPORT ─────────────────────────────────────────────────────────────
 export function exportToExcel(data) {
@@ -18,6 +18,7 @@ export function exportToExcel(data) {
   sheet("Venda Frutas", data.fruitSales.map(x => ({ Data: x.date, Produto: x.type, Comprador: x.buyer, Qtd: x.qty, Unid: x.unit, Kg: saleKg(x), "Preco Unit": x.unitPrice, Total: x.total, Situacao: x.payStatus === "recebido" ? "recebido" : "a receber", Forma: x.payMethod || "", "Dinheiro com": x.holder || "", NF: x.nf })));
   sheet("Manejo", data.agronomicEvents.map(x => ({ Data: x.date, Tipo: x.type, Talhao: x.talhao, Descricao: x.title, Produto: x.product, "Dose/Lamina": x.dose, "Area ha": x.area, Proxima: x.nextDate, Obs: x.notes })));
   sheet("Aplicacoes", data.applications.map(x => ({ Data: x.date, Talhao: x.talhao, Alvo: x.target, "Produto Comercial": x.product, "Ingrediente Ativo": x.active, Dose: x.dose, Volume: x.volume, "Carencia dias": x.carencia, "Reentrada h": x.reentry, Responsavel: x.applicator, Obs: x.notes })));
+  sheet("Compradores", buyerSummary(data.fruitSales).map(x => ({ Comprador: x.nome, Caixas: x.caixas, "Kg total": x.kg, "Comprou R$": x.total, "A receber R$": x.aReceber })));
   sheet("Talhoes", data.plots.map(x => ({ Nome: x.name, Variedade: x.variety, "Area ha": x.area, Plantas: x.plantCount, "Ano Plantio": x.plantYear, Irrigacao: x.irrigation, Estagio: x.stage })));
   XLSX.writeFile(wb, `Fazenda_Goiaba_${today()}.xlsx`);
 }

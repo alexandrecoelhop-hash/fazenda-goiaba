@@ -1,27 +1,37 @@
 import { useState } from "react";
 import { C } from "../ui/theme";
 import { uid, today, fmt, fmtDate, fmtMoney } from "../lib/format";
-import { CAIXA_KG, saleKg } from "../lib/sales";
+import { CAIXA_KG, isCaixa, saleKg, buyerSummary } from "../lib/sales";
 import { Card, Btn, Badge, Icon, Input, Select, Modal, Table, StatCard } from "../ui";
 
 // ─── FruitSales ──────────────────────────────────────────────────────────────
+const EMPTY_FORM = { date: "", type: "verde", buyer: "", qty: "", unit: "kg", unitPrice: "", nf: "", notes: "", payStatus: "a_receber", payMethod: "pix", holder: "comigo" };
+
 export default function FruitSales({ data, setData }) {
-  const [modal, setModal] = useState(false);
-  const [form, setForm] = useState({ date: today(), type: "verde", buyer: "", qty: "", unit: "kg", unitPrice: "", nf: "", notes: "", payStatus: "a_receber", payMethod: "pix", holder: "comigo" });
+  const [modal, setModal] = useState(null); // null | "new" | "edit"
+  const [form, setForm] = useState(EMPTY_FORM);
   const types = [{ value: "verde", label: "Goiaba Verde" }, { value: "polpa", label: "Polpa" }, { value: "madura", label: "Goiaba Madura" }, { value: "refugo", label: "Refugo" }];
   const holderLabel = (h) => h === "matheus" ? "com Matheus" : h === "comigo" ? "comigo" : null;
   const togglePay = (id) => setData(d => ({ ...d, fruitSales: d.fruitSales.map(x => x.id === id ? { ...x, payStatus: x.payStatus === "recebido" ? "a_receber" : "recebido" } : x) }));
-  const save = () => { const total = Number(form.qty) * Number(form.unitPrice); setData(d => ({ ...d, fruitSales: [{ ...form, total, id: uid() }, ...d.fruitSales] })); setModal(false); };
+  const openNew = () => { setForm({ ...EMPTY_FORM, date: today() }); setModal("new"); };
+  const openEdit = (r) => { setForm({ ...EMPTY_FORM, ...r, unit: isCaixa(r) ? "caixa" : (r.unit || "kg") }); setModal("edit"); };
+  const save = () => {
+    const total = Number(form.qty) * Number(form.unitPrice);
+    if (modal === "edit") setData(d => ({ ...d, fruitSales: d.fruitSales.map(x => x.id === form.id ? { ...form, total } : x) }));
+    else setData(d => ({ ...d, fruitSales: [{ ...form, total, id: uid() }, ...d.fruitSales] }));
+    setModal(null);
+  };
   const totalKg = data.fruitSales.reduce((s, x) => s + saleKg(x), 0);
+  const buyers = buyerSummary(data.fruitSales);
   const totalValue = data.fruitSales.reduce((s, x) => s + Number(x.total || 0), 0);
-  const precoKg = form.unit === "caixa" && Number(form.unitPrice) > 0 ? Number(form.unitPrice) / CAIXA_KG : null;
+  const precoKg = isCaixa(form) && Number(form.unitPrice) > 0 ? Number(form.unitPrice) / CAIXA_KG : null;
   return (
     <div>
-      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 20 }}><h2 style={{ margin: 0, color: C.text }}>Venda de Frutas</h2><Btn onClick={() => { setForm({ date: today(), type: "verde", buyer: "", qty: "", unit: "kg", unitPrice: "", nf: "", notes: "", payStatus: "a_receber", payMethod: "pix", holder: "comigo" }); setModal(true); }}><Icon name="plus" size={16} color="#fff" /> Nova Venda</Btn></div>
+      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 20 }}><h2 style={{ margin: 0, color: C.text }}>Venda de Frutas</h2><Btn onClick={openNew}><Icon name="plus" size={16} color="#fff" /> Nova Venda</Btn></div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}><StatCard label="Produção Vendida" value={`${fmt(totalKg, 0)} kg`} icon="fruit" color={C.primary} sub={`caixas convertidas a ${CAIXA_KG} kg`} /><StatCard label="Receita" value={fmtMoney(totalValue)} icon="finance" color={C.primaryLight} /></div>
       <Card><Table cols={[
         { key: "date", label: "Data", render: r => fmtDate(r.date) }, { key: "type", label: "Produto", render: r => <Badge color={r.type === "polpa" ? C.accentDark : C.primary}>{types.find(t => t.value === r.type)?.label}</Badge> },
-        { key: "buyer", label: "Comprador" }, { key: "qty", label: "Qtd", render: r => r.unit === "caixa" ? `${r.qty} cx (${fmt(saleKg(r), 0)} kg)` : `${r.qty} ${r.unit}` }, { key: "unitPrice", label: "Preço", render: r => fmtMoney(r.unitPrice) },
+        { key: "buyer", label: "Comprador" }, { key: "qty", label: "Qtd", render: r => isCaixa(r) ? `${r.qty} cx (${fmt(saleKg(r), 0)} kg)` : `${r.qty} ${r.unit}` }, { key: "unitPrice", label: "Preço", render: r => fmtMoney(r.unitPrice) },
         { key: "total", label: "Total", render: r => <strong style={{ color: C.primary }}>{fmtMoney(r.total)}</strong> },
         { key: "pay", label: "Pagamento", render: r => (
           <div style={{ display: "flex", flexDirection: "column", gap: 2, alignItems: "flex-start" }}>
@@ -32,9 +42,19 @@ export default function FruitSales({ data, setData }) {
           </div>
         ) },
         { key: "nf", label: "NF" },
-        { key: "del", label: "", render: r => <Btn size="sm" variant="danger" onClick={() => setData(d => ({ ...d, fruitSales: d.fruitSales.filter(x => x.id !== r.id) }))}><Icon name="trash" size={14} color="#fff" /></Btn> },
+        { key: "a", label: "", render: r => <div style={{ display: "flex", gap: 6 }}><Btn size="sm" variant="ghost" onClick={() => openEdit(r)}>Editar</Btn><Btn size="sm" variant="danger" onClick={() => setData(d => ({ ...d, fruitSales: d.fruitSales.filter(x => x.id !== r.id) }))}><Icon name="trash" size={14} color="#fff" /></Btn></div> },
       ]} rows={data.fruitSales} /></Card>
-      {modal && <Modal title="Venda de Fruta" onClose={() => setModal(false)}><div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      <Card style={{ marginTop: 16 }}>
+        <h4 style={{ margin: "0 0 12px", color: C.text, fontSize: 15 }}>🧾 Registro por comprador</h4>
+        <Table cols={[
+          { key: "nome", label: "Comprador" },
+          { key: "caixas", label: "Caixas", render: r => r.caixas ? fmt(r.caixas, 0) : "-" },
+          { key: "kg", label: "Kg (total)", render: r => <strong>{fmt(r.kg, 0)} kg</strong> },
+          { key: "total", label: "Comprou (R$)", render: r => fmtMoney(r.total) },
+          { key: "aReceber", label: "A receber", render: r => r.aReceber > 0 ? <strong style={{ color: C.danger }}>{fmtMoney(r.aReceber)}</strong> : <Badge color={C.primaryLight}>✓ em dia</Badge> },
+        ]} rows={buyers} empty="Nenhuma venda lançada." />
+      </Card>
+      {modal && <Modal title={modal === "edit" ? "Editar Venda" : "Venda de Fruta"} onClose={() => setModal(null)}><div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         <Input label="Data" type="date" value={form.date} onChange={v => setForm(f => ({ ...f, date: v }))} />
         <Select label="Produto" value={form.type} onChange={v => setForm(f => ({ ...f, type: v }))} options={types} />
         <Input label="Comprador" value={form.buyer} onChange={v => setForm(f => ({ ...f, buyer: v }))} />
@@ -51,7 +71,7 @@ export default function FruitSales({ data, setData }) {
           </div>
         )}
         <div style={{ textAlign: "right", fontWeight: 700, color: C.primary }}>Total: {fmtMoney(Number(form.qty) * Number(form.unitPrice))}</div>
-        <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}><Btn variant="ghost" onClick={() => setModal(false)}>Cancelar</Btn><Btn onClick={save}><Icon name="check" size={16} color="#fff" /> Salvar</Btn></div>
+        <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}><Btn variant="ghost" onClick={() => setModal(null)}>Cancelar</Btn><Btn onClick={save}><Icon name="check" size={16} color="#fff" /> Salvar</Btn></div>
       </div></Modal>}
     </div>
   );
