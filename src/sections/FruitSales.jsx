@@ -23,6 +23,7 @@ export default function FruitSales({ data, setData }) {
   };
   const totalKg = data.fruitSales.reduce((s, x) => s + saleKg(x), 0);
   const buyers = buyerSummary(data.fruitSales);
+  const buyerNames = [...new Set(data.fruitSales.map(x => (x.buyer || "").trim()).filter(Boolean))].sort();
   const totalValue = data.fruitSales.reduce((s, x) => s + Number(x.total || 0), 0);
   const precoKg = isCaixa(form) && Number(form.unitPrice) > 0 ? Number(form.unitPrice) / CAIXA_KG : null;
   return (
@@ -57,7 +58,7 @@ export default function FruitSales({ data, setData }) {
       {modal && <Modal title={modal === "edit" ? "Editar Venda" : "Venda de Fruta"} onClose={() => setModal(null)}><div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         <Input label="Data" type="date" value={form.date} onChange={v => setForm(f => ({ ...f, date: v }))} />
         <Select label="Produto" value={form.type} onChange={v => setForm(f => ({ ...f, type: v }))} options={types} />
-        <Input label="Comprador" value={form.buyer} onChange={v => setForm(f => ({ ...f, buyer: v }))} />
+        <Input label="Comprador" value={form.buyer} onChange={v => setForm(f => ({ ...f, buyer: v }))} suggestions={buyerNames} />
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}><Input label="Qtd" type="number" value={form.qty} onChange={v => setForm(f => ({ ...f, qty: v }))} /><Select label="Unid" value={form.unit} onChange={v => setForm(f => ({ ...f, unit: v }))} options={[{ value: "kg", label: "kg" }, { value: "caixa", label: `caixa (${CAIXA_KG} kg)` }]} /><Input label={form.unit === "caixa" ? "Preço da caixa" : "Preço do kg"} type="number" value={form.unitPrice} onChange={v => setForm(f => ({ ...f, unitPrice: v }))} /></div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
           <Select label="Situação" value={form.payStatus} onChange={v => setForm(f => ({ ...f, payStatus: v }))} options={[{ value: "a_receber", label: "A receber" }, { value: "recebido", label: "Recebido" }]} />

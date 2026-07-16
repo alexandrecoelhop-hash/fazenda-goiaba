@@ -1,3 +1,4 @@
+import { useId } from "react";
 import { C } from "./theme";
 
 // ─── Icons ───────────────────────────────────────────────────────────────────
@@ -41,13 +42,17 @@ export const Btn = ({ onClick, variant = "primary", size = "md", children, style
   };
   return <button style={{ ...base, ...v[variant], ...style }} onClick={onClick}>{children}</button>;
 };
-export const Input = ({ label, type = "text", value, onChange, placeholder, required, style = {} }) => (
-  <div style={{ display: "flex", flexDirection: "column", gap: 4, ...style }}>
-    {label && <label style={{ fontSize: 12, fontWeight: 600, color: C.textSoft }}>{label}{required && " *"}</label>}
-    <input type={type} value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
-      style={{ padding: "9px 12px", borderRadius: 8, border: `1.5px solid ${C.border}`, fontSize: 14, fontFamily: "inherit", color: C.text, background: C.bg, outline: "none", width: "100%", minWidth: 0, boxSizing: "border-box" }} />
-  </div>
-);
+export const Input = ({ label, type = "text", value, onChange, placeholder, required, suggestions, style = {} }) => {
+  const listId = useId();
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 4, ...style }}>
+      {label && <label style={{ fontSize: 12, fontWeight: 600, color: C.textSoft }}>{label}{required && " *"}</label>}
+      <input type={type} value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} list={suggestions && suggestions.length ? listId : undefined}
+        style={{ padding: "9px 12px", borderRadius: 8, border: `1.5px solid ${C.border}`, fontSize: 14, fontFamily: "inherit", color: C.text, background: C.bg, outline: "none", width: "100%", minWidth: 0, boxSizing: "border-box" }} />
+      {suggestions && suggestions.length > 0 && <datalist id={listId}>{suggestions.map(s => <option key={s} value={s} />)}</datalist>}
+    </div>
+  );
+};
 export const Select = ({ label, value, onChange, options, style = {} }) => (
   <div style={{ display: "flex", flexDirection: "column", gap: 4, ...style }}>
     {label && <label style={{ fontSize: 12, fontWeight: 600, color: C.textSoft }}>{label}</label>}
