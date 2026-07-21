@@ -1,6 +1,7 @@
 import * as XLSX from "xlsx";
 import { today } from "./format";
 import { saleKg, buyerSummary } from "./sales";
+import { workerSummary, counterSummary } from "./registros";
 
 // ─── EXCEL EXPORT ─────────────────────────────────────────────────────────────
 export function exportToExcel(data) {
@@ -19,6 +20,8 @@ export function exportToExcel(data) {
   sheet("Manejo", data.agronomicEvents.map(x => ({ Data: x.date, Tipo: x.type, Talhao: x.talhao, Descricao: x.title, Produto: x.product, "Dose/Lamina": x.dose, "Area ha": x.area, Proxima: x.nextDate, Obs: x.notes })));
   sheet("Aplicacoes", data.applications.map(x => ({ Data: x.date, Talhao: x.talhao, Alvo: x.target, "Produto Comercial": x.product, "Ingrediente Ativo": x.active, Dose: x.dose, Volume: x.volume, "Carencia dias": x.carencia, "Reentrada h": x.reentry, Responsavel: x.applicator, Obs: x.notes })));
   sheet("Compradores", buyerSummary(data.fruitSales).map(x => ({ Comprador: x.nome, Caixas: x.caixas, "Kg total": x.kg, "Comprou R$": x.total, "A receber R$": x.aReceber })));
+  sheet("Trabalhadores", workerSummary(data.laborEntries).map(x => ({ Trabalhador: x.nome, Tipo: x.tipos, Servicos: x.servicos, "Dias/Qtd": x.dias, "Total pago R$": x.total, "Ultimo dia": x.ultima })));
+  sheet("Fornecedores", counterSummary(data.inputPurchases, "compra").map(x => ({ Loja: x.nome, Produtos: x.produtos, Compras: x.compras, "Total gasto R$": x.total, Ultima: x.ultima })));
   sheet("Talhoes", data.plots.map(x => ({ Nome: x.name, Variedade: x.variety, "Area ha": x.area, Plantas: x.plantCount, "Ano Plantio": x.plantYear, Irrigacao: x.irrigation, Estagio: x.stage })));
   XLSX.writeFile(wb, `Fazenda_Goiaba_${today()}.xlsx`);
 }

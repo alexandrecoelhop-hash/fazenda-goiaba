@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { C } from "../ui/theme";
 import { uid, today, fmtDate, fmtMoney } from "../lib/format";
+import { nomesUsados, counterSummary } from "../lib/registros";
 import { Card, Btn, Icon, Input, Modal, Table } from "../ui";
 
 // ─── TradeSection (Insumos / Materiais) ──────────────────────────────────────
@@ -9,6 +10,10 @@ export default function TradeSection({ title, listKey, itemLabel, data, setData,
   const [modal, setModal] = useState(false);
   const [form, setForm] = useState({ type: "compra", date: today(), name: "", counter: "", qty: "", unit: "kg", unitPrice: "", nf: "", description: "" });
   const list = data[listKey].filter(x => x.type === tab);
+  const contrapartes = counterSummary(data[listKey], tab);
+  const nomesContraparte = nomesUsados(data[listKey], "counter");
+  const nomesItens = nomesUsados(data[listKey], "name");
+  const rotuloContraparte = tab === "compra" ? "Fornecedor / Loja" : "Comprador";
   const save = () => {
     const total = Number(form.qty) * Number(form.unitPrice);
     setData(d => ({ ...d, [listKey]: [{ ...form, total, id: uid() }, ...d[listKey]] }));
@@ -35,7 +40,7 @@ export default function TradeSection({ title, listKey, itemLabel, data, setData,
           { key: "date", label: "Data", render: r => fmtDate(r.date) },
           { key: "name", label: itemLabel },
           { key: "description", label: "Descrição" },
-          { key: "counter", label: tab === "compra" ? "Fornecedor" : "Comprador" },
+          { key: "counter", label: tab === "compra" ? "Fornecedor / Loja" : "Comprador" },
           { key: "qty", label: "Qtd", render: r => `${r.qty} ${r.unit}` },
           { key: "unitPrice", label: "Preço", render: r => fmtMoney(r.unitPrice) },
           { key: "total", label: "Total", render: r => <strong>{fmtMoney(r.total)}</strong> },
@@ -43,13 +48,23 @@ export default function TradeSection({ title, listKey, itemLabel, data, setData,
           { key: "del", label: "", render: r => <Btn size="sm" variant="danger" onClick={() => setData(d => ({ ...d, [listKey]: d[listKey].filter(x => x.id !== r.id) }))}><Icon name="trash" size={14} color="#fff" /></Btn> },
         ]} rows={list} />
       </Card>
+      <Card style={{ marginTop: 16 }}>
+        <h4 style={{ margin: "0 0 12px", color: C.text, fontSize: 15 }}>🏪 Registro por {tab === "compra" ? "loja / fornecedor" : "comprador"}</h4>
+        <Table cols={[
+          { key: "nome", label: rotuloContraparte },
+          { key: "produtos", label: itemLabel + "s" },
+          { key: "compras", label: tab === "compra" ? "Compras" : "Vendas", render: r => `${r.compras}` },
+          { key: "total", label: tab === "compra" ? "Total gasto" : "Total recebido", render: r => <strong style={{ color: tab === "compra" ? C.danger : C.primary }}>{fmtMoney(r.total)}</strong> },
+          { key: "ultima", label: "Último", render: r => fmtDate(r.ultima) },
+        ]} rows={contrapartes} empty="Nenhum lançamento ainda." />
+      </Card>
       {modal && (
         <Modal title={`${tab === "compra" ? "Compra" : "Venda"} — ${title}`} onClose={() => setModal(false)}>
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             <Input label="Data" type="date" value={form.date} onChange={v => setForm(f => ({ ...f, date: v }))} />
-            <Input label={itemLabel} value={form.name} onChange={v => setForm(f => ({ ...f, name: v }))} required />
+            <Input label={itemLabel} value={form.name} onChange={v => setForm(f => ({ ...f, name: v }))} suggestions={nomesItens} required />
             <Input label="Descrição" value={form.description} onChange={v => setForm(f => ({ ...f, description: v }))} />
-            <Input label={tab === "compra" ? "Fornecedor" : "Comprador"} value={form.counter} onChange={v => setForm(f => ({ ...f, counter: v }))} />
+            <Input label={rotuloContraparte} value={form.counter} onChange={v => setForm(f => ({ ...f, counter: v }))} suggestions={nomesContraparte} />
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
               <Input label="Qtd" type="number" value={form.qty} onChange={v => setForm(f => ({ ...f, qty: v }))} />
               <Input label="Unidade" value={form.unit} onChange={v => setForm(f => ({ ...f, unit: v }))} />
