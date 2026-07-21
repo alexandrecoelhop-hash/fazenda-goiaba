@@ -13,6 +13,7 @@ import Schedule from "./sections/Schedule";
 import Applications from "./sections/Applications";
 import PestAdvisor from "./sections/PestAdvisor";
 import Stock from "./sections/Stock";
+import ImportarNota from "./sections/ImportarNota";
 import TradeSection from "./sections/TradeSection";
 import Labor from "./sections/Labor";
 import Energy from "./sections/Energy";
@@ -29,6 +30,7 @@ const navItems = [
   { key: "applications", label: "Aplicações", icon: "phyto" },
   { key: "advisor", label: "Diagnóstico", icon: "search" },
   { key: "stock", label: "Estoque", icon: "stock" },
+  { key: "nota", label: "Importar Nota", icon: "excel" },
   { key: "inputs", label: "Insumos", icon: "fertilizer" },
   { key: "materials", label: "Materiais", icon: "buy" },
   { key: "labor", label: "Mão de Obra", icon: "labor" },
@@ -154,6 +156,7 @@ function FarmApp() {
           {page === "applications" && <Applications data={data} setData={setData} />}
           {page === "advisor" && <PestAdvisor />}
           {page === "stock" && <Stock data={data} setData={setData} />}
+          {page === "nota" && <ImportarNota data={data} setData={setData} />}
           {page === "inputs" && <TradeSection title="Insumos" listKey="inputPurchases" itemLabel="Produto" data={data} setData={setData} updateStock />}
           {page === "materials" && <TradeSection title="Materiais" listKey="materialTransactions" itemLabel="Material" data={data} setData={setData} />}
           {page === "labor" && <Labor data={data} setData={setData} />}
