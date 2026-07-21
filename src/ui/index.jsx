@@ -1,5 +1,6 @@
 import { useId } from "react";
 import { C } from "./theme";
+import { useIsMobile } from "../lib/useIsMobile";
 
 // ─── Icons ───────────────────────────────────────────────────────────────────
 export const Icon = ({ name, size = 18, color = "currentColor" }) => {
@@ -86,18 +87,47 @@ export const StatCard = ({ label, value, color = C.primary, icon, sub }) => (
     </div>
   </Card>
 );
-export const Table = ({ cols, rows, empty = "Nenhum registro." }) => (
-  <div style={{ overflowX: "auto" }}>
-    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-      <thead><tr>{cols.map(c => <th key={c.key} style={{ textAlign: "left", padding: "8px 12px", borderBottom: `2px solid ${C.border}`, color: C.muted, fontWeight: 600, whiteSpace: "nowrap" }}>{c.label}</th>)}</tr></thead>
-      <tbody>
-        {rows.length === 0 ? <tr><td colSpan={cols.length} style={{ textAlign: "center", color: C.muted, padding: 24 }}>{empty}</td></tr>
-          : rows.map((row, i) => (
+export const Table = ({ cols, rows, empty = "Nenhum registro." }) => {
+  const isMobile = useIsMobile();
+  if (rows.length === 0) return <p style={{ textAlign: "center", color: C.muted, padding: 24, margin: 0, fontSize: 13 }}>{empty}</p>;
+
+  // No celular cada registro vira um cartão (tabela larga fica ilegível)
+  if (isMobile) {
+    const campos = cols.filter(c => c.label);
+    const acoes = cols.filter(c => !c.label);
+    return (
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        {rows.map((row, i) => (
+          <div key={row.id || i} style={{ background: C.bg, border: `1px solid ${C.border}`, borderRadius: 10, padding: 12, fontSize: 13 }}>
+            {campos.map(c => {
+              const v = c.render ? c.render(row) : row[c.key];
+              if (v == null || v === "" || v === "-") return null;
+              return (
+                <div key={c.key} style={{ display: "flex", justifyContent: "space-between", gap: 12, padding: "3px 0" }}>
+                  <span style={{ color: C.muted, flexShrink: 0 }}>{c.label}</span>
+                  <span style={{ textAlign: "right", minWidth: 0 }}>{v}</span>
+                </div>
+              );
+            })}
+            {acoes.length > 0 && <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 8, paddingTop: 8, borderTop: `1px solid ${C.border}` }}>{acoes.map(c => <span key={c.key}>{c.render ? c.render(row) : null}</span>)}</div>}
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ overflowX: "auto" }}>
+      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+        <thead><tr>{cols.map(c => <th key={c.key} style={{ textAlign: "left", padding: "8px 12px", borderBottom: `2px solid ${C.border}`, color: C.muted, fontWeight: 600, whiteSpace: "nowrap" }}>{c.label}</th>)}</tr></thead>
+        <tbody>
+          {rows.map((row, i) => (
             <tr key={row.id || i} style={{ background: i % 2 === 0 ? C.bg : C.card }}>
               {cols.map(c => <td key={c.key} style={{ padding: "9px 12px", borderBottom: `1px solid ${C.border}` }}>{c.render ? c.render(row) : row[c.key]}</td>)}
             </tr>
           ))}
-      </tbody>
-    </table>
-  </div>
-);
+        </tbody>
+      </table>
+    </div>
+  );
+};
