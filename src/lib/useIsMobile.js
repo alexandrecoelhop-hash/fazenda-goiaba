@@ -8,9 +8,12 @@ export function useIsMobile() {
   const [mobile, setMobile] = useState(isMobileNow);
   useEffect(() => {
     const mq = window.matchMedia(MOBILE_Q);
-    const onChange = (e) => setMobile(e.matches);
-    mq.addEventListener("change", onChange);
-    return () => mq.removeEventListener("change", onChange);
+    // resize cobre casos em que o evento do matchMedia não dispara (ex.: girar a tela)
+    const sync = () => setMobile(mq.matches);
+    mq.addEventListener("change", sync);
+    window.addEventListener("resize", sync);
+    sync();
+    return () => { mq.removeEventListener("change", sync); window.removeEventListener("resize", sync); };
   }, []);
   return mobile;
 }

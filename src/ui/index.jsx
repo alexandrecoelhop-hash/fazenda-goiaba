@@ -1,4 +1,4 @@
-import { useId } from "react";
+import { useId, useState, useMemo } from "react";
 import { C } from "./theme";
 import { useIsMobile } from "../lib/useIsMobile";
 
@@ -89,6 +89,29 @@ export const StatCard = ({ label, value, color = C.primary, icon, sub }) => (
 );
 export const Table = ({ cols, rows, empty = "Nenhum registro." }) => {
   const isMobile = useIsMobile();
+  const [sort, setSort] = useState(null); // { key, dir: "asc" | "desc" }
+  const ordenaveis = cols.filter(c => c.label);
+
+  const ordenadas = useMemo(() => {
+    if (!sort) return rows;
+    const col = cols.find(c => c.key === sort.key);
+    if (!col) return rows;
+    const valor = (r) => (col.sortValue ? col.sortValue(r) : r[col.key]);
+    const cmp = (a, b) => {
+      const va = valor(a), vb = valor(b);
+      const na = Number(va), nb = Number(vb);
+      if (va !== "" && vb !== "" && va != null && vb != null && !isNaN(na) && !isNaN(nb)) return na - nb;
+      return String(va ?? "").localeCompare(String(vb ?? ""), "pt-BR");
+    };
+    return [...rows].sort((a, b) => (sort.dir === "desc" ? -cmp(a, b) : cmp(a, b)));
+  }, [rows, sort, cols]);
+
+  // 1º clique: maior/mais recente primeiro; 2º clique inverte; 3º volta à ordem original
+  const alternar = (key) => setSort(s =>
+    !s || s.key !== key ? { key, dir: "desc" } : s.dir === "desc" ? { key, dir: "asc" } : null
+  );
+  const seta = (key) => (sort && sort.key === key ? (sort.dir === "desc" ? " ↓" : " ↑") : "");
+
   if (rows.length === 0) return <p style={{ textAlign: "center", color: C.muted, padding: 24, margin: 0, fontSize: 13 }}>{empty}</p>;
 
   // No celular cada registro vira um cartão (tabela larga fica ilegível)
@@ -97,7 +120,17 @@ export const Table = ({ cols, rows, empty = "Nenhum registro." }) => {
     const acoes = cols.filter(c => !c.label);
     return (
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        {rows.map((row, i) => (
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ fontSize: 12, color: C.muted, fontWeight: 600, flexShrink: 0 }}>Ordenar por</span>
+          <select value={sort ? sort.key : ""} onChange={e => setSort(e.target.value ? { key: e.target.value, dir: "desc" } : null)}
+            style={{ flex: 1, minWidth: 0, padding: "6px 10px", borderRadius: 8, border: `1.5px solid ${C.border}`, fontSize: 13, fontFamily: "inherit", background: C.bg, color: C.text }}>
+            <option value="">Ordem de lançamento</option>
+            {ordenaveis.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}
+          </select>
+          {sort && <button onClick={() => setSort(s => ({ ...s, dir: s.dir === "desc" ? "asc" : "desc" }))} title="Inverter ordem"
+            style={{ background: C.green50, border: `1.5px solid ${C.border}`, borderRadius: 8, padding: "6px 11px", fontSize: 14, color: C.primary, cursor: "pointer", flexShrink: 0 }}>{sort.dir === "desc" ? "↓" : "↑"}</button>}
+        </div>
+        {ordenadas.map((row, i) => (
           <div key={row.id || i} style={{ background: C.bg, border: `1px solid ${C.border}`, borderRadius: 10, padding: 12, fontSize: 13 }}>
             {campos.map(c => {
               const v = c.render ? c.render(row) : row[c.key];
@@ -119,9 +152,15 @@ export const Table = ({ cols, rows, empty = "Nenhum registro." }) => {
   return (
     <div style={{ overflowX: "auto" }}>
       <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-        <thead><tr>{cols.map(c => <th key={c.key} style={{ textAlign: "left", padding: "8px 12px", borderBottom: `2px solid ${C.border}`, color: C.muted, fontWeight: 600, whiteSpace: "nowrap" }}>{c.label}</th>)}</tr></thead>
+        <thead><tr>{cols.map(c => (
+          <th key={c.key} onClick={c.label ? () => alternar(c.key) : undefined}
+            title={c.label ? "Clique para ordenar" : undefined}
+            style={{ textAlign: "left", padding: "8px 12px", borderBottom: `2px solid ${C.border}`, color: sort && sort.key === c.key ? C.primary : C.muted, fontWeight: 600, whiteSpace: "nowrap", cursor: c.label ? "pointer" : "default", userSelect: "none" }}>
+            {c.label}{seta(c.key)}
+          </th>
+        ))}</tr></thead>
         <tbody>
-          {rows.map((row, i) => (
+          {ordenadas.map((row, i) => (
             <tr key={row.id || i} style={{ background: i % 2 === 0 ? C.bg : C.card }}>
               {cols.map(c => <td key={c.key} style={{ padding: "9px 12px", borderBottom: `1px solid ${C.border}` }}>{c.render ? c.render(row) : row[c.key]}</td>)}
             </tr>

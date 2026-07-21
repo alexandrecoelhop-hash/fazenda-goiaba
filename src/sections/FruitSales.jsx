@@ -5,7 +5,7 @@ import { CAIXA_KG, isCaixa, saleKg, buyerSummary, paymentSummary } from "../lib/
 import { Card, Btn, Badge, Icon, Input, Select, Modal, Table, StatCard } from "../ui";
 
 // ─── FruitSales ──────────────────────────────────────────────────────────────
-const EMPTY_FORM = { date: "", type: "verde", buyer: "", qty: "", unit: "kg", unitPrice: "", nf: "", notes: "", payStatus: "a_receber", payMethod: "pix", holder: "comigo" };
+const EMPTY_FORM = { date: "", type: "verde", buyer: "", qty: "", unit: "kg", unitPrice: "", notes: "", payStatus: "a_receber", payMethod: "pix", holder: "comigo" };
 
 export default function FruitSales({ data, setData }) {
   const [modal, setModal] = useState(null); // null | "new" | "edit"
@@ -58,9 +58,9 @@ export default function FruitSales({ data, setData }) {
       </Card>
       <Card><Table cols={[
         { key: "date", label: "Data", render: r => fmtDate(r.date) }, { key: "type", label: "Produto", render: r => <Badge color={r.type === "polpa" ? C.accentDark : C.primary}>{types.find(t => t.value === r.type)?.label}</Badge> },
-        { key: "buyer", label: "Comprador" }, { key: "qty", label: "Qtd", render: r => isCaixa(r) ? `${r.qty} cx (${fmt(saleKg(r), 0)} kg)` : `${r.qty} ${r.unit}` }, { key: "unitPrice", label: "Preço", render: r => fmtMoney(r.unitPrice) },
+        { key: "buyer", label: "Comprador" }, { key: "qty", label: "Qtd", sortValue: r => saleKg(r), render: r => isCaixa(r) ? `${r.qty} cx (${fmt(saleKg(r), 0)} kg)` : `${r.qty} ${r.unit}` }, { key: "unitPrice", label: "Preço", render: r => fmtMoney(r.unitPrice) },
         { key: "total", label: "Total", render: r => <strong style={{ color: C.primary }}>{fmtMoney(r.total)}</strong> },
-        { key: "pay", label: "Pagamento", render: r => (
+        { key: "pay", label: "Pagamento", sortValue: r => (r.payStatus === "recebido" ? "1 recebido" : "0 a receber"), render: r => (
           <div style={{ display: "flex", flexDirection: "column", gap: 2, alignItems: "flex-start" }}>
             <button onClick={() => togglePay(r.id)} title="Clique para alternar entre a receber e recebido" style={{ background: "none", border: "none", padding: 0, cursor: "pointer" }}>
               <Badge color={r.payStatus === "recebido" ? C.primaryLight : C.accentDark}>{r.payStatus === "recebido" ? "✓ recebido" : "a receber"}</Badge>
@@ -68,7 +68,6 @@ export default function FruitSales({ data, setData }) {
             {(r.payMethod || holderLabel(r.holder)) && <span style={{ fontSize: 11, color: C.muted }}>{[r.payMethod, holderLabel(r.holder)].filter(Boolean).join(" · ")}</span>}
           </div>
         ) },
-        { key: "nf", label: "NF" },
         { key: "a", label: "", render: r => <div style={{ display: "flex", gap: 6 }}><Btn size="sm" variant="ghost" onClick={() => openEdit(r)}>Editar</Btn><Btn size="sm" variant="danger" onClick={() => setData(d => ({ ...d, fruitSales: d.fruitSales.filter(x => x.id !== r.id) }))}><Icon name="trash" size={14} color="#fff" /></Btn></div> },
       ]} rows={data.fruitSales} /></Card>
       <Card style={{ marginTop: 16 }}>
@@ -91,7 +90,6 @@ export default function FruitSales({ data, setData }) {
           <Select label="Forma" value={form.payMethod} onChange={v => setForm(f => ({ ...f, payMethod: v }))} options={[{ value: "pix", label: "Pix" }, { value: "dinheiro", label: "Dinheiro" }]} />
           <Select label="Dinheiro com" value={form.holder} onChange={v => setForm(f => ({ ...f, holder: v }))} options={[{ value: "comigo", label: "Comigo" }, { value: "matheus", label: "Matheus" }]} />
         </div>
-        <Input label="NF" value={form.nf} onChange={v => setForm(f => ({ ...f, nf: v }))} />
         {form.unit === "caixa" && Number(form.qty) > 0 && (
           <div style={{ background: C.green50, borderRadius: 8, padding: "8px 12px", fontSize: 13, color: C.textSoft }}>
             {form.qty} caixa(s) = <strong>{fmt(saleKg(form), 0)} kg</strong>{precoKg != null && <> — preço do kg: <strong>{fmtMoney(precoKg)}</strong></>}
