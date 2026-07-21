@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { C } from "../ui/theme";
 import { uid, today, fmt, fmtDate, fmtMoney } from "../lib/format";
-import { CAIXA_KG, isCaixa, saleKg, buyerSummary } from "../lib/sales";
+import { CAIXA_KG, isCaixa, saleKg, buyerSummary, paymentSummary } from "../lib/sales";
 import { Card, Btn, Badge, Icon, Input, Select, Modal, Table, StatCard } from "../ui";
 
 // ─── FruitSales ──────────────────────────────────────────────────────────────
@@ -24,12 +24,38 @@ export default function FruitSales({ data, setData }) {
   const totalKg = data.fruitSales.reduce((s, x) => s + saleKg(x), 0);
   const buyers = buyerSummary(data.fruitSales);
   const buyerNames = [...new Set(data.fruitSales.map(x => (x.buyer || "").trim()).filter(Boolean))].sort();
+  const caixa = paymentSummary(data.fruitSales);
   const totalValue = data.fruitSales.reduce((s, x) => s + Number(x.total || 0), 0);
   const precoKg = isCaixa(form) && Number(form.unitPrice) > 0 ? Number(form.unitPrice) / CAIXA_KG : null;
   return (
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 20 }}><h2 style={{ margin: 0, color: C.text }}>Venda de Frutas</h2><Btn onClick={openNew}><Icon name="plus" size={16} color="#fff" /> Nova Venda</Btn></div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}><StatCard label="Produção Vendida" value={`${fmt(totalKg, 0)} kg`} icon="fruit" color={C.primary} sub={`caixas convertidas a ${CAIXA_KG} kg`} /><StatCard label="Receita" value={fmtMoney(totalValue)} icon="finance" color={C.primaryLight} /></div>
+      <Card style={{ marginBottom: 16 }}>
+        <h4 style={{ margin: "0 0 12px", color: C.text, fontSize: 15 }}>💰 Resumo do dinheiro</h4>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          <div style={{ background: caixa.aReceber > 0 ? C.dangerLight : C.green50, borderRadius: 10, padding: "12px 14px" }}>
+            <div style={{ fontSize: 12, color: C.muted, fontWeight: 600 }}>A receber</div>
+            <div style={{ fontSize: 20, fontWeight: 800, color: caixa.aReceber > 0 ? C.danger : C.primary }}>{fmtMoney(caixa.aReceber)}</div>
+          </div>
+          <div style={{ background: C.green50, borderRadius: 10, padding: "12px 14px" }}>
+            <div style={{ fontSize: 12, color: C.muted, fontWeight: 600 }}>Recebido</div>
+            <div style={{ fontSize: 20, fontWeight: 800, color: C.primary }}>{fmtMoney(caixa.recebido)}</div>
+          </div>
+        </div>
+        <div style={{ marginTop: 12 }}>
+          <div style={{ fontSize: 12, color: C.muted, fontWeight: 600, marginBottom: 6 }}>Do recebido, com quem está</div>
+          {caixa.porPessoa.map(p => (
+            <div key={p.key} style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12, padding: "7px 10px", background: C.bg, borderRadius: 8, marginBottom: 6 }}>
+              <span style={{ fontSize: 13, fontWeight: 600, color: C.text }}>{p.label}</span>
+              <span style={{ textAlign: "right" }}>
+                <strong style={{ fontSize: 14, color: C.primary }}>{fmtMoney(p.total)}</strong>
+                {p.total > 0 && <span style={{ fontSize: 11, color: C.muted, display: "block" }}>pix {fmtMoney(p.pix)} · dinheiro {fmtMoney(p.dinheiro)}</span>}
+              </span>
+            </div>
+          ))}
+        </div>
+      </Card>
       <Card><Table cols={[
         { key: "date", label: "Data", render: r => fmtDate(r.date) }, { key: "type", label: "Produto", render: r => <Badge color={r.type === "polpa" ? C.accentDark : C.primary}>{types.find(t => t.value === r.type)?.label}</Badge> },
         { key: "buyer", label: "Comprador" }, { key: "qty", label: "Qtd", render: r => isCaixa(r) ? `${r.qty} cx (${fmt(saleKg(r), 0)} kg)` : `${r.qty} ${r.unit}` }, { key: "unitPrice", label: "Preço", render: r => fmtMoney(r.unitPrice) },
