@@ -1,9 +1,12 @@
 // Leitura de nota fiscal (XML da NF-e ou PDF/DANFE) para importar itens.
 // Tudo é processado no próprio navegador — o arquivo não sai do aparelho.
 import * as pdfjs from "pdfjs-dist";
-import pdfWorker from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 
-pdfjs.GlobalWorkerOptions.workerSrc = pdfWorker;
+// O worker é empacotado pelo Vite (funciona tanto em dev quanto no site publicado)
+pdfjs.GlobalWorkerOptions.workerPort = new Worker(
+  new URL("pdfjs-dist/build/pdf.worker.min.mjs", import.meta.url),
+  { type: "module" }
+);
 
 const num = (v) => {
   if (v == null) return 0;
