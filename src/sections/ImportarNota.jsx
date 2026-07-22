@@ -15,6 +15,7 @@ const DESTINOS = [
 export default function ImportarNota({ data, setData }) {
   const [nota, setNota] = useState(null);
   const [erro, setErro] = useState("");
+  const [feito, setFeito] = useState(null);
   const [lendo, setLendo] = useState(false);
   const [loja, setLoja] = useState("");
   const [dataNota, setDataNota] = useState(today());
@@ -25,7 +26,7 @@ export default function ImportarNota({ data, setData }) {
   const abrir = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    setErro(""); setLendo(true); setNota(null);
+    setErro(""); setFeito(null); setLendo(true); setNota(null);
     try {
       const lida = await lerNota(file);
       setNota({ ...lida, itens: lida.itens.map(i => ({ ...i, destino: "estoque_compra", categoria: "insumo" })) });
@@ -61,7 +62,7 @@ export default function ImportarNota({ data, setData }) {
       return { ...d, stockItems, inputPurchases: [...compras, ...d.inputPurchases] };
     });
     const nCompras = meus.filter(i => i.destino === "estoque_compra").length;
-    alert(`${meus.length} item(ns) no estoque${nCompras ? ` e ${nCompras} compra(s) lançada(s) em Insumos` : ""}.`);
+    setFeito({ itens: meus.length, compras: nCompras, valor: totalMeu, produtos: meus.map(i => i.nome) });
     setNota(null);
   };
 
@@ -82,6 +83,17 @@ export default function ImportarNota({ data, setData }) {
         {erro && <div style={{ background: C.dangerLight, color: "#7a2018", borderRadius: 9, padding: "10px 12px", fontSize: 13, marginTop: 12 }}>⚠ {erro}</div>}
       </Card>
 
+      {feito && (
+        <Card style={{ marginBottom: 20, borderLeft: `4px solid ${C.primaryLight}`, background: C.green50 }}>
+          <div style={{ fontWeight: 700, color: C.primary, marginBottom: 6 }}>✓ Importado com sucesso</div>
+          <div style={{ fontSize: 13, color: C.textSoft }}>
+            {feito.itens} item(ns) somados ao <strong>Estoque</strong>
+            {feito.compras > 0 && <> e {feito.compras} compra(s) de {fmtMoney(feito.valor)} lançada(s) em <strong>Insumos</strong></>}.
+          </div>
+          <div style={{ fontSize: 12, color: C.muted, marginTop: 6 }}>{feito.produtos.join(" · ")}</div>
+        </Card>
+      )}
+
       {nota && (
         <>
           <Card style={{ marginBottom: 16 }}>
@@ -98,6 +110,10 @@ export default function ImportarNota({ data, setData }) {
                 <Btn size="sm" variant="ghost" onClick={() => marcarTodos("estoque_compra")}>Marcar tudo como meu</Btn>
                 <Btn size="sm" variant="ghost" onClick={() => marcarTodos("fora")}>Desmarcar tudo</Btn>
               </div>
+            </div>
+            <div style={{ background: C.green50, borderRadius: 8, padding: "10px 12px", marginBottom: 12, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
+              <span style={{ fontSize: 13, color: C.textSoft }}>Depois de conferir, clique aqui para gravar no estoque:</span>
+              <Btn onClick={importar}><Icon name="check" size={16} color="#fff" /> Importar {meus.length} item(ns)</Btn>
             </div>
             <div style={{ fontSize: 12, color: C.muted, marginBottom: 10 }}>
               Confira quantidades e valores antes de importar — a leitura automática pode errar em notas de layout diferente.

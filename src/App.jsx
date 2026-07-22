@@ -68,12 +68,24 @@ function FarmApp() {
   const [loaded, setLoaded] = useState(false);
   const [saveState, setSaveState] = useState("idle"); // idle | saving | saved | error
   const skipNextSave = useRef(true);
+  const versaoLocal = useRef(0);      // conta as alterações feitas neste aparelho
+  const naoSalvo = useRef(false);     // há alteração local ainda não gravada na nuvem
+
+  // Toda alteração do usuário passa por aqui, para a sincronização não sobrescrevê-la
+  const setDataUsuario = (updater) => {
+    versaoLocal.current += 1;
+    naoSalvo.current = true;
+    setData(updater);
+  };
 
   // Carrega os dados da nuvem (Supabase) ao abrir + sincroniza periodicamente
   const puxarNuvem = async (silencioso) => {
+    const versaoAntes = versaoLocal.current;
     try {
       const remoto = await loadData();
-      if (remoto) { skipNextSave.current = true; setData({ ...EMPTY, ...remoto }); }
+      // descarta o que veio da nuvem se algo foi alterado aqui nesse meio tempo
+      const houveAlteracaoLocal = versaoLocal.current !== versaoAntes || naoSalvo.current;
+      if (remoto && !houveAlteracaoLocal) { skipNextSave.current = true; setData({ ...EMPTY, ...remoto }); }
       if (!silencioso) setSaveState("saved");
     } catch (e) { if (!silencioso) setSaveState("error"); }
     setLoaded(true);
@@ -100,6 +112,7 @@ function FarmApp() {
     const t = setTimeout(async () => {
       try {
         await saveData(data);
+        naoSalvo.current = false;
         setSaveState("saved");
         setTimeout(() => setSaveState(s => s === "saved" ? "idle" : s), 1500);
       } catch (e) { setSaveState("error"); }
@@ -149,19 +162,19 @@ function FarmApp() {
         </div>
         <div style={{ flex: 1, padding: isMobile ? 12 : 24, overflowY: "auto" }}>
           {page === "dashboard" && <Dashboard data={data} />}
-          {page === "plots" && <Plots data={data} setData={setData} />}
-          {page === "agronomic" && <Agronomic data={data} setData={setData} />}
-          {page === "fertilizer" && <FertilizerAdvisor data={data} setData={setData} />}
-          {page === "schedule" && <Schedule data={data} setData={setData} />}
-          {page === "applications" && <Applications data={data} setData={setData} />}
+          {page === "plots" && <Plots data={data} setData={setDataUsuario} />}
+          {page === "agronomic" && <Agronomic data={data} setData={setDataUsuario} />}
+          {page === "fertilizer" && <FertilizerAdvisor data={data} setData={setDataUsuario} />}
+          {page === "schedule" && <Schedule data={data} setData={setDataUsuario} />}
+          {page === "applications" && <Applications data={data} setData={setDataUsuario} />}
           {page === "advisor" && <PestAdvisor />}
-          {page === "stock" && <Stock data={data} setData={setData} />}
-          {page === "nota" && <ImportarNota data={data} setData={setData} />}
-          {page === "inputs" && <TradeSection title="Insumos" listKey="inputPurchases" itemLabel="Produto" data={data} setData={setData} updateStock />}
-          {page === "materials" && <TradeSection title="Materiais" listKey="materialTransactions" itemLabel="Material" data={data} setData={setData} />}
-          {page === "labor" && <Labor data={data} setData={setData} />}
-          {page === "energy" && <Energy data={data} setData={setData} />}
-          {page === "fruits" && <FruitSales data={data} setData={setData} />}
+          {page === "stock" && <Stock data={data} setData={setDataUsuario} />}
+          {page === "nota" && <ImportarNota data={data} setData={setDataUsuario} />}
+          {page === "inputs" && <TradeSection title="Insumos" listKey="inputPurchases" itemLabel="Produto" data={data} setData={setDataUsuario} updateStock />}
+          {page === "materials" && <TradeSection title="Materiais" listKey="materialTransactions" itemLabel="Material" data={data} setData={setDataUsuario} />}
+          {page === "labor" && <Labor data={data} setData={setDataUsuario} />}
+          {page === "energy" && <Energy data={data} setData={setDataUsuario} />}
+          {page === "fruits" && <FruitSales data={data} setData={setDataUsuario} />}
           {page === "finance" && <Finance data={data} />}
         </div>
       </div>
