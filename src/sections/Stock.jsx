@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { C } from "../ui/theme";
 import { uid } from "../lib/format";
-import { Card, Btn, Badge, Icon, Input, Select, Modal, Table } from "../ui";
+import { Card, Btn, Badge, Icon, Input, Select, Modal, Table, RowActions } from "../ui";
 
 // ─── Stock ───────────────────────────────────────────────────────────────────
 export default function Stock({ data, setData }) {
@@ -27,11 +27,11 @@ export default function Stock({ data, setData }) {
           { key: "qty", label: "Qtd", render: r => `${r.qty} ${r.unit}` },
           { key: "minQty", label: "Mín.", render: r => `${r.minQty || 0} ${r.unit}` },
           { key: "status", label: "Status", render: r => Number(r.qty) <= Number(r.minQty || 0) ? <Badge color={C.danger}>Baixo</Badge> : <Badge color={C.primaryLight}>OK</Badge> },
-          { key: "a", label: "", render: r => <div style={{ display: "flex", gap: 6 }}><Btn size="sm" variant="ghost" onClick={() => { setForm(r); setModal("edit"); }}>Editar</Btn><Btn size="sm" variant="danger" onClick={() => setData(d => ({ ...d, stockItems: d.stockItems.filter(i => i.id !== r.id) }))}><Icon name="trash" size={14} color="#fff" /></Btn></div> },
+          { key: "a", label: "", render: r => <RowActions onEdit={() => { setForm(r); setModal("edit"); }} onCopy={() => { const { id, ...rest } = r; setForm(rest); setModal("copy"); }} onDelete={() => setData(d => ({ ...d, stockItems: d.stockItems.filter(i => i.id !== r.id) }))} /> },
         ]} rows={data.stockItems} />
       </Card>
       {modal && (
-        <Modal title={modal === "new" ? "Novo Item" : "Editar Item"} onClose={() => setModal(null)}>
+        <Modal title={modal === "edit" ? "Editar Item" : modal === "copy" ? "Copiar Item" : "Novo Item"} onClose={() => setModal(null)}>
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             <Input label="Nome" value={form.name} onChange={v => setForm(f => ({ ...f, name: v }))} required />
             <Select label="Categoria" value={form.category} onChange={v => setForm(f => ({ ...f, category: v }))} options={cats.map(c => ({ value: c, label: c }))} />

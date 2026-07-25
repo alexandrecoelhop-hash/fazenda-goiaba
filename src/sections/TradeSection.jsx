@@ -2,35 +2,45 @@ import { useState } from "react";
 import { C } from "../ui/theme";
 import { uid, today, fmtDate, fmtMoney } from "../lib/format";
 import { nomesUsados, counterSummary } from "../lib/registros";
-import { Card, Btn, Icon, Input, Modal, Table } from "../ui";
+import { Card, Btn, Icon, Input, Modal, Table, RowActions } from "../ui";
 
 // ─── TradeSection (Insumos / Materiais) ──────────────────────────────────────
 export default function TradeSection({ title, listKey, itemLabel, data, setData, updateStock }) {
   const [tab, setTab] = useState("compra");
-  const [modal, setModal] = useState(false);
-  const [form, setForm] = useState({ type: "compra", date: today(), name: "", counter: "", qty: "", unit: "kg", unitPrice: "", nf: "", description: "" });
+  const [modal, setModal] = useState(null); // null | "new" | "edit" | "copy"
+  const EMPTY = { type: tab, date: "", name: "", counter: "", qty: "", unit: "kg", unitPrice: "", nf: "", description: "" };
+  const [form, setForm] = useState(EMPTY);
   const list = data[listKey].filter(x => x.type === tab);
   const contrapartes = counterSummary(data[listKey], tab);
   const nomesContraparte = nomesUsados(data[listKey], "counter");
   const nomesItens = nomesUsados(data[listKey], "name");
   const rotuloContraparte = tab === "compra" ? "Fornecedor / Loja" : "Comprador";
+  const openNew = () => { setForm({ ...EMPTY, type: tab, date: today() }); setModal("new"); };
+  const openEdit = (r) => { setForm({ ...EMPTY, ...r }); setModal("edit"); };
+  const openCopy = (r) => { const { id, ...rest } = r; setForm({ ...EMPTY, ...rest, date: today() }); setModal("copy"); };
   const save = () => {
     const total = Number(form.qty) * Number(form.unitPrice);
+    if (modal === "edit") {
+      // editar não mexe no estoque (evita contar a compra duas vezes)
+      setData(d => ({ ...d, [listKey]: d[listKey].map(x => x.id === form.id ? { ...form, total } : x) }));
+      setModal(null);
+      return;
+    }
     setData(d => ({ ...d, [listKey]: [{ ...form, total, id: uid() }, ...d[listKey]] }));
-    if (updateStock && tab === "compra" && form.name) {
+    if (updateStock && form.type === "compra" && form.name) {
       setData(d => {
         const idx = d.stockItems.findIndex(s => s.name.toLowerCase() === form.name.toLowerCase());
         if (idx >= 0) { const u = [...d.stockItems]; u[idx] = { ...u[idx], qty: Number(u[idx].qty) + Number(form.qty) }; return { ...d, stockItems: u }; }
         return { ...d, stockItems: [{ id: uid(), name: form.name, category: "insumo", unit: form.unit, qty: form.qty, minQty: 0 }, ...d.stockItems] };
       });
     }
-    setModal(false);
+    setModal(null);
   };
   return (
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 20 }}>
         <h2 style={{ margin: 0, color: C.text }}>{title}</h2>
-        <Btn onClick={() => { setForm({ type: tab, date: today(), name: "", counter: "", qty: "", unit: "kg", unitPrice: "", nf: "", description: "" }); setModal(true); }}><Icon name="plus" size={16} color="#fff" /> Novo Lançamento</Btn>
+        <Btn onClick={openNew}><Icon name="plus" size={16} color="#fff" /> Novo Lançamento</Btn>
       </div>
       <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
         {["compra", "venda"].map(t => <button key={t} onClick={() => setTab(t)} style={{ padding: "8px 20px", borderRadius: 8, border: `2px solid ${tab === t ? C.primary : C.border}`, background: tab === t ? C.primary : "transparent", color: tab === t ? "#fff" : C.muted, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>{t[0].toUpperCase() + t.slice(1)}</button>)}
@@ -45,7 +55,7 @@ export default function TradeSection({ title, listKey, itemLabel, data, setData,
           { key: "unitPrice", label: "Preço", render: r => fmtMoney(r.unitPrice) },
           { key: "total", label: "Total", render: r => <strong>{fmtMoney(r.total)}</strong> },
           { key: "nf", label: "NF" },
-          { key: "del", label: "", render: r => <Btn size="sm" variant="danger" onClick={() => setData(d => ({ ...d, [listKey]: d[listKey].filter(x => x.id !== r.id) }))}><Icon name="trash" size={14} color="#fff" /></Btn> },
+          { key: "acoes", label: "", render: r => <RowActions onEdit={() => openEdit(r)} onCopy={() => openCopy(r)} onDelete={() => setData(d => ({ ...d, [listKey]: d[listKey].filter(x => x.id !== r.id) }))} /> },
         ]} rows={list} />
       </Card>
       <Card style={{ marginTop: 16 }}>
@@ -59,7 +69,7 @@ export default function TradeSection({ title, listKey, itemLabel, data, setData,
         ]} rows={contrapartes} empty="Nenhum lançamento ainda." />
       </Card>
       {modal && (
-        <Modal title={`${tab === "compra" ? "Compra" : "Venda"} — ${title}`} onClose={() => setModal(false)}>
+        <Modal title={`${modal === "edit" ? "Editar" : modal === "copy" ? "Copiar" : (form.type === "compra" ? "Compra" : "Venda")} — ${title}`} onClose={() => setModal(null)}>
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             <Input label="Data" type="date" value={form.date} onChange={v => setForm(f => ({ ...f, date: v }))} />
             <Input label={itemLabel} value={form.name} onChange={v => setForm(f => ({ ...f, name: v }))} suggestions={nomesItens} required />
@@ -72,7 +82,7 @@ export default function TradeSection({ title, listKey, itemLabel, data, setData,
             </div>
             <Input label="Nota Fiscal" value={form.nf} onChange={v => setForm(f => ({ ...f, nf: v }))} />
             <div style={{ textAlign: "right", fontWeight: 700, color: C.primary }}>Total: {fmtMoney(Number(form.qty) * Number(form.unitPrice))}</div>
-            <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}><Btn variant="ghost" onClick={() => setModal(false)}>Cancelar</Btn><Btn onClick={save}><Icon name="check" size={16} color="#fff" /> Salvar</Btn></div>
+            <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}><Btn variant="ghost" onClick={() => setModal(null)}>Cancelar</Btn><Btn onClick={save}><Icon name="check" size={16} color="#fff" /> Salvar</Btn></div>
           </div>
         </Modal>
       )}

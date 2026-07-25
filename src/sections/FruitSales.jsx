@@ -2,7 +2,7 @@ import { useState } from "react";
 import { C } from "../ui/theme";
 import { uid, today, fmt, fmtDate, fmtMoney } from "../lib/format";
 import { CAIXA_KG, isCaixa, saleKg, buyerSummary, paymentSummary } from "../lib/sales";
-import { Card, Btn, Badge, Icon, Input, Select, Modal, Table, StatCard } from "../ui";
+import { Card, Btn, Badge, Icon, Input, Select, Modal, Table, StatCard, RowActions } from "../ui";
 
 // ─── FruitSales ──────────────────────────────────────────────────────────────
 const EMPTY_FORM = { date: "", type: "verde", buyer: "", qty: "", unit: "kg", unitPrice: "", notes: "", payStatus: "a_receber", payMethod: "pix", holder: "comigo" };
@@ -15,6 +15,7 @@ export default function FruitSales({ data, setData }) {
   const togglePay = (id) => setData(d => ({ ...d, fruitSales: d.fruitSales.map(x => x.id === id ? { ...x, payStatus: x.payStatus === "recebido" ? "a_receber" : "recebido" } : x) }));
   const openNew = () => { setForm({ ...EMPTY_FORM, date: today() }); setModal("new"); };
   const openEdit = (r) => { setForm({ ...EMPTY_FORM, ...r, unit: isCaixa(r) ? "caixa" : (r.unit || "kg") }); setModal("edit"); };
+  const openCopy = (r) => { const { id, ...rest } = r; setForm({ ...EMPTY_FORM, ...rest, unit: isCaixa(r) ? "caixa" : (r.unit || "kg"), date: today() }); setModal("copy"); };
   const save = () => {
     const total = Number(form.qty) * Number(form.unitPrice);
     if (modal === "edit") setData(d => ({ ...d, fruitSales: d.fruitSales.map(x => x.id === form.id ? { ...form, total } : x) }));
@@ -68,7 +69,7 @@ export default function FruitSales({ data, setData }) {
             {(r.payMethod || holderLabel(r.holder)) && <span style={{ fontSize: 11, color: C.muted }}>{[r.payMethod, holderLabel(r.holder)].filter(Boolean).join(" · ")}</span>}
           </div>
         ) },
-        { key: "a", label: "", render: r => <div style={{ display: "flex", gap: 6 }}><Btn size="sm" variant="ghost" onClick={() => openEdit(r)}>Editar</Btn><Btn size="sm" variant="danger" onClick={() => setData(d => ({ ...d, fruitSales: d.fruitSales.filter(x => x.id !== r.id) }))}><Icon name="trash" size={14} color="#fff" /></Btn></div> },
+        { key: "a", label: "", render: r => <RowActions onEdit={() => openEdit(r)} onCopy={() => openCopy(r)} onDelete={() => setData(d => ({ ...d, fruitSales: d.fruitSales.filter(x => x.id !== r.id) }))} /> },
       ]} rows={data.fruitSales} /></Card>
       <Card style={{ marginTop: 16 }}>
         <h4 style={{ margin: "0 0 12px", color: C.text, fontSize: 15 }}>🧾 Registro por comprador</h4>
@@ -80,7 +81,7 @@ export default function FruitSales({ data, setData }) {
           { key: "aReceber", label: "A receber", render: r => r.aReceber > 0 ? <strong style={{ color: C.danger }}>{fmtMoney(r.aReceber)}</strong> : <Badge color={C.primaryLight}>✓ em dia</Badge> },
         ]} rows={buyers} empty="Nenhuma venda lançada." />
       </Card>
-      {modal && <Modal title={modal === "edit" ? "Editar Venda" : "Venda de Fruta"} onClose={() => setModal(null)}><div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      {modal && <Modal title={modal === "edit" ? "Editar Venda" : modal === "copy" ? "Copiar Venda" : "Venda de Fruta"} onClose={() => setModal(null)}><div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         <Input label="Data" type="date" value={form.date} onChange={v => setForm(f => ({ ...f, date: v }))} />
         <Select label="Produto" value={form.type} onChange={v => setForm(f => ({ ...f, type: v }))} options={types} />
         <Input label="Comprador" value={form.buyer} onChange={v => setForm(f => ({ ...f, buyer: v }))} suggestions={buyerNames} />
