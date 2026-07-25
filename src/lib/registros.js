@@ -1,9 +1,27 @@
 // Registros que se montam sozinhos a partir dos lançamentos, pelo nome digitado.
 const nomeDe = (v) => (v || "").trim() || "(sem nome)";
 
+// ─── Listas de sugestão padrão (o app aprende novas conforme você usa) ───────
+export const TIPOS_PRODUTO = [
+  "Adubo foliar", "Adubo granulado", "Fertirrigação", "Micronutriente",
+  "Inseticida", "Fungicida", "Herbicida", "Acaricida", "Nematicida", "Bactericida",
+  "Óleo mineral", "Espalhante adesivo", "Calcário", "Gesso agrícola",
+  "Semente / Muda", "Embalagem", "Ferramenta", "Combustível", "Outro",
+];
+export const UNIDADES_COMUNS = ["kg", "sc", "L", "mL", "un", "cx", "rl", "pct", "g", "t", "m", "dose"];
+export const VARIEDADES = ["Paluma", "Rica", "Pedro Sato", "Século XXI", "Cortibel", "Kumagai"];
+
 // Nomes já usados num campo, para sugerir enquanto o usuário digita
 export const nomesUsados = (lista, campo) =>
   [...new Set(lista.map(x => (x[campo] || "").trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b, "pt-BR"));
+
+// Junta valores padrão + tudo que já foi digitado (em uma ou mais listas), sem repetir.
+// Ex.: listaSugestoes(TIPOS_PRODUTO, data.inputPurchases.map(x => x.tipo), ...)
+export const listaSugestoes = (defaults = [], ...valores) => {
+  const set = new Set(defaults);
+  valores.flat().forEach(v => { const s = (v ?? "").toString().trim(); if (s) set.add(s); });
+  return [...set].sort((a, b) => a.localeCompare(b, "pt-BR"));
+};
 
 // Mão de obra: dias/diárias e valor pago por trabalhador
 export const workerSummary = (laborEntries) => {

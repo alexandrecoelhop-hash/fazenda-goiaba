@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { C } from "../ui/theme";
 import { uid } from "../lib/format";
+import { listaSugestoes, UNIDADES_COMUNS } from "../lib/registros";
 import { Card, Btn, Badge, Icon, Input, Select, Modal, Table, RowActions } from "../ui";
 
 // ─── Stock ───────────────────────────────────────────────────────────────────
@@ -8,6 +9,8 @@ export default function Stock({ data, setData }) {
   const [modal, setModal] = useState(null);
   const [form, setForm] = useState({ name: "", category: "insumo", unit: "kg", qty: "", minQty: "" });
   const cats = ["insumo", "defensivo", "material", "embalagem", "ferramenta", "outro"];
+  const nomes = listaSugestoes([], data.stockItems.map(s => s.name), data.inputPurchases.map(i => i.name));
+  const unidades = listaSugestoes(UNIDADES_COMUNS, data.stockItems.map(s => s.unit));
   const save = () => {
     if (!form.name || !form.qty) return;
     if (modal === "edit") setData(d => ({ ...d, stockItems: d.stockItems.map(i => i.id === form.id ? form : i) }));
@@ -33,11 +36,11 @@ export default function Stock({ data, setData }) {
       {modal && (
         <Modal title={modal === "edit" ? "Editar Item" : modal === "copy" ? "Copiar Item" : "Novo Item"} onClose={() => setModal(null)}>
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            <Input label="Nome" value={form.name} onChange={v => setForm(f => ({ ...f, name: v }))} required />
+            <Input label="Nome" value={form.name} onChange={v => setForm(f => ({ ...f, name: v }))} suggestions={nomes} required />
             <Select label="Categoria" value={form.category} onChange={v => setForm(f => ({ ...f, category: v }))} options={cats.map(c => ({ value: c, label: c }))} />
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
               <Input label="Qtd" type="number" value={form.qty} onChange={v => setForm(f => ({ ...f, qty: v }))} required />
-              <Input label="Unidade" value={form.unit} onChange={v => setForm(f => ({ ...f, unit: v }))} />
+              <Input label="Unidade" value={form.unit} onChange={v => setForm(f => ({ ...f, unit: v }))} suggestions={unidades} />
               <Input label="Mínimo" type="number" value={form.minQty} onChange={v => setForm(f => ({ ...f, minQty: v }))} />
             </div>
             <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}><Btn variant="ghost" onClick={() => setModal(null)}>Cancelar</Btn><Btn onClick={save}><Icon name="check" size={16} color="#fff" /> Salvar</Btn></div>

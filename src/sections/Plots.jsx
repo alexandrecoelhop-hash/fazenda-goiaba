@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { C } from "../ui/theme";
 import { uid } from "../lib/format";
+import { listaSugestoes, VARIEDADES } from "../lib/registros";
 import { Card, Btn, Badge, Icon, Input, Select, Modal } from "../ui";
 
 // ─── Plots ───────────────────────────────────────────────────────────────────
@@ -11,6 +12,7 @@ export default function Plots({ data, setData }) {
   const [form, setForm] = useState(EMPTY);
   const stages = ["viveiro", "implantação", "formação", "produção", "renovação"];
   const irr = ["gotejamento", "microaspersão", "aspersão convencional", "sulcos", "sem irrigação"];
+  const variedades = listaSugestoes(VARIEDADES, data.plots.map(p => p.variety));
   const openNew = () => { setForm(EMPTY); setModal("new"); };
   const openEdit = (p) => { setForm({ ...EMPTY, ...p }); setModal("edit"); };
   const openCopy = (p) => { const { id, ...rest } = p; setForm({ ...EMPTY, ...rest, name: `${p.name} (cópia)` }); setModal("copy"); };
@@ -41,7 +43,7 @@ export default function Plots({ data, setData }) {
         ))}
       </div>
       {modal && <Modal title={modal === "edit" ? "Editar Talhão" : modal === "copy" ? "Copiar Talhão" : "Cadastrar Talhão"} onClose={() => setModal(null)}><div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}><Input label="Nome/Código" value={form.name} onChange={v => setForm(f => ({ ...f, name: v }))} required /><Input label="Variedade" value={form.variety} onChange={v => setForm(f => ({ ...f, variety: v }))} placeholder="Paluma, Pedro Sato..." /></div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}><Input label="Nome/Código" value={form.name} onChange={v => setForm(f => ({ ...f, name: v }))} required /><Input label="Variedade" value={form.variety} onChange={v => setForm(f => ({ ...f, variety: v }))} suggestions={variedades} placeholder="Paluma, Pedro Sato..." /></div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}><Input label="Área (ha)" type="number" value={form.area} onChange={v => setForm(f => ({ ...f, area: v }))} /><Input label="Nº plantas" type="number" value={form.plantCount} onChange={v => setForm(f => ({ ...f, plantCount: v }))} /><Input label="Ano plantio" type="number" value={form.plantYear} onChange={v => setForm(f => ({ ...f, plantYear: v }))} /></div>
         <Select label="Irrigação" value={form.irrigation} onChange={v => setForm(f => ({ ...f, irrigation: v }))} options={irr.map(i => ({ value: i, label: i }))} />
         <Select label="Estágio" value={form.stage} onChange={v => setForm(f => ({ ...f, stage: v }))} options={stages.map(s => ({ value: s, label: s }))} />

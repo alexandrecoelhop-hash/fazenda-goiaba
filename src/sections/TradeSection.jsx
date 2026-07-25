@@ -1,19 +1,22 @@
 import { useState } from "react";
 import { C } from "../ui/theme";
 import { uid, today, fmtDate, fmtMoney } from "../lib/format";
-import { nomesUsados, counterSummary } from "../lib/registros";
+import { nomesUsados, counterSummary, listaSugestoes, TIPOS_PRODUTO, UNIDADES_COMUNS } from "../lib/registros";
 import { Card, Btn, Icon, Input, Modal, Table, RowActions } from "../ui";
 
 // ─── TradeSection (Insumos / Materiais) ──────────────────────────────────────
 export default function TradeSection({ title, listKey, itemLabel, data, setData, updateStock }) {
   const [tab, setTab] = useState("compra");
   const [modal, setModal] = useState(null); // null | "new" | "edit" | "copy"
-  const EMPTY = { type: tab, date: "", name: "", counter: "", qty: "", unit: "kg", unitPrice: "", nf: "", description: "" };
+  const EMPTY = { type: tab, date: "", name: "", tipo: "", counter: "", qty: "", unit: "kg", unitPrice: "", nf: "", description: "" };
   const [form, setForm] = useState(EMPTY);
   const list = data[listKey].filter(x => x.type === tab);
   const contrapartes = counterSummary(data[listKey], tab);
   const nomesContraparte = nomesUsados(data[listKey], "counter");
   const nomesItens = nomesUsados(data[listKey], "name");
+  // Tipos: padrões (adubo foliar, inseticida...) + os que você já usou em Insumos e Materiais
+  const tipos = listaSugestoes(TIPOS_PRODUTO, data.inputPurchases.map(x => x.tipo), data.materialTransactions.map(x => x.tipo));
+  const unidades = listaSugestoes(UNIDADES_COMUNS, data[listKey].map(x => x.unit));
   const rotuloContraparte = tab === "compra" ? "Fornecedor / Loja" : "Comprador";
   const openNew = () => { setForm({ ...EMPTY, type: tab, date: today() }); setModal("new"); };
   const openEdit = (r) => { setForm({ ...EMPTY, ...r }); setModal("edit"); };
@@ -49,6 +52,7 @@ export default function TradeSection({ title, listKey, itemLabel, data, setData,
         <Table cols={[
           { key: "date", label: "Data", render: r => fmtDate(r.date) },
           { key: "name", label: itemLabel },
+          { key: "tipo", label: "Tipo" },
           { key: "description", label: "Descrição" },
           { key: "counter", label: tab === "compra" ? "Fornecedor / Loja" : "Comprador" },
           { key: "qty", label: "Qtd", render: r => `${r.qty} ${r.unit}` },
@@ -73,11 +77,12 @@ export default function TradeSection({ title, listKey, itemLabel, data, setData,
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             <Input label="Data" type="date" value={form.date} onChange={v => setForm(f => ({ ...f, date: v }))} />
             <Input label={itemLabel} value={form.name} onChange={v => setForm(f => ({ ...f, name: v }))} suggestions={nomesItens} required />
+            <Input label="Tipo (defensivo / adubo)" value={form.tipo} onChange={v => setForm(f => ({ ...f, tipo: v }))} suggestions={tipos} placeholder="Ex.: inseticida, adubo foliar, fungicida..." />
             <Input label="Descrição" value={form.description} onChange={v => setForm(f => ({ ...f, description: v }))} />
             <Input label={rotuloContraparte} value={form.counter} onChange={v => setForm(f => ({ ...f, counter: v }))} suggestions={nomesContraparte} />
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
               <Input label="Qtd" type="number" value={form.qty} onChange={v => setForm(f => ({ ...f, qty: v }))} />
-              <Input label="Unidade" value={form.unit} onChange={v => setForm(f => ({ ...f, unit: v }))} />
+              <Input label="Unidade" value={form.unit} onChange={v => setForm(f => ({ ...f, unit: v }))} suggestions={unidades} />
               <Input label="Preço unit." type="number" value={form.unitPrice} onChange={v => setForm(f => ({ ...f, unitPrice: v }))} />
             </div>
             <Input label="Nota Fiscal" value={form.nf} onChange={v => setForm(f => ({ ...f, nf: v }))} />

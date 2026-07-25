@@ -2,6 +2,7 @@ import { useState } from "react";
 import { C } from "../ui/theme";
 import { uid, today, fmtDate } from "../lib/format";
 import { PEST_DB } from "../data/pests";
+import { listaSugestoes } from "../lib/registros";
 import { Card, Btn, Badge, Icon, Input, Modal, Table, RowActions } from "../ui";
 
 // ─── APLICAÇÕES (caderno de campo fitossanitário) ────────────────────────────
@@ -19,6 +20,11 @@ export default function Applications({ data, setData }) {
     setModal(null);
   };
   const applyDbSuggestion = (pestName) => { const p = PEST_DB.find(x => x.nome === pestName); if (p) setForm(f => ({ ...f, target: p.nome, product: p.exemplos[0] || "", active: "" })); };
+  const talhoes = listaSugestoes([], data.plots.map(p => p.name), data.applications.map(a => a.talhao), data.agronomicEvents.map(e => e.talhao));
+  const alvos = listaSugestoes(PEST_DB.map(p => p.nome), data.applications.map(a => a.target));
+  const produtos = listaSugestoes([], data.applications.map(a => a.product), data.inputPurchases.map(i => i.name));
+  const ativos = listaSugestoes([], data.applications.map(a => a.active));
+  const aplicadores = listaSugestoes([], data.applications.map(a => a.applicator), data.laborEntries.map(l => l.worker));
   return (
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
@@ -48,15 +54,15 @@ export default function Applications({ data, setData }) {
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
             <Input label="Data" type="date" value={form.date} onChange={v => setForm(f => ({ ...f, date: v }))} />
-            <Input label="Talhão / Bloco" value={form.talhao} onChange={v => setForm(f => ({ ...f, talhao: v }))} />
-            <Input label="Alvo (praga/doença)" value={form.target} onChange={v => setForm(f => ({ ...f, target: v }))} />
-            <Input label="Produto comercial" value={form.product} onChange={v => setForm(f => ({ ...f, product: v }))} />
-            <Input label="Ingrediente ativo" value={form.active} onChange={v => setForm(f => ({ ...f, active: v }))} />
+            <Input label="Talhão / Bloco" value={form.talhao} onChange={v => setForm(f => ({ ...f, talhao: v }))} suggestions={talhoes} />
+            <Input label="Alvo (praga/doença)" value={form.target} onChange={v => setForm(f => ({ ...f, target: v }))} suggestions={alvos} />
+            <Input label="Produto comercial" value={form.product} onChange={v => setForm(f => ({ ...f, product: v }))} suggestions={produtos} />
+            <Input label="Ingrediente ativo" value={form.active} onChange={v => setForm(f => ({ ...f, active: v }))} suggestions={ativos} />
             <Input label="Dose (ex: 100 mL/100L)" value={form.dose} onChange={v => setForm(f => ({ ...f, dose: v }))} />
             <Input label="Volume de calda (L/ha)" value={form.volume} onChange={v => setForm(f => ({ ...f, volume: v }))} />
             <Input label="Carência (dias)" type="number" value={form.carencia} onChange={v => setForm(f => ({ ...f, carencia: v }))} />
             <Input label="Reentrada (horas)" type="number" value={form.reentry} onChange={v => setForm(f => ({ ...f, reentry: v }))} />
-            <Input label="Responsável / aplicador" value={form.applicator} onChange={v => setForm(f => ({ ...f, applicator: v }))} />
+            <Input label="Responsável / aplicador" value={form.applicator} onChange={v => setForm(f => ({ ...f, applicator: v }))} suggestions={aplicadores} />
           </div>
           <Input label="Observações (clima, equipamento, EPI)" value={form.notes} onChange={v => setForm(f => ({ ...f, notes: v }))} style={{ marginTop: 12 }} />
           <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 16 }}>

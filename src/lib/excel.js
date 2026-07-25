@@ -12,8 +12,8 @@ export function exportToExcel(data) {
     XLSX.utils.book_append_sheet(wb, ws, name.slice(0, 31));
   };
   sheet("Estoque", data.stockItems.map(s => ({ Produto: s.name, Categoria: s.category, Quantidade: s.qty, Unidade: s.unit, "Estoque Min": s.minQty })));
-  sheet("Insumos", data.inputPurchases.map(x => ({ Tipo: x.type, Data: x.date, Produto: x.name, Contraparte: x.counter, Qtd: x.qty, Unid: x.unit, "Preco Unit": x.unitPrice, Total: x.total, NF: x.nf })));
-  sheet("Materiais", data.materialTransactions.map(x => ({ Tipo: x.type, Data: x.date, Material: x.name, Descricao: x.description, Contraparte: x.counter, Qtd: x.qty, Unid: x.unit, "Preco Unit": x.unitPrice, Total: x.total, NF: x.nf })));
+  sheet("Insumos", data.inputPurchases.map(x => ({ Operacao: x.type, Data: x.date, Produto: x.name, "Tipo produto": x.tipo || "", Descricao: x.description, Contraparte: x.counter, Qtd: x.qty, Unid: x.unit, "Preco Unit": x.unitPrice, Total: x.total, NF: x.nf })));
+  sheet("Materiais", data.materialTransactions.map(x => ({ Operacao: x.type, Data: x.date, Material: x.name, "Tipo produto": x.tipo || "", Descricao: x.description, Contraparte: x.counter, Qtd: x.qty, Unid: x.unit, "Preco Unit": x.unitPrice, Total: x.total, NF: x.nf })));
   sheet("Mao de Obra", data.laborEntries.map(x => ({ Data: x.date, Trabalhador: x.worker, Servico: x.service, Tipo: x.type, "Dias/Qtd": x.days, "Valor Unit": x.dailyRate, Total: x.total, Obs: x.notes })));
   sheet("Energia", data.energyBills.map(x => ({ Referencia: x.month, Vencimento: x.date, kWh: x.kwh, Valor: x.value, Obs: x.notes })));
   sheet("Venda Frutas", data.fruitSales.map(x => ({ Data: x.date, Produto: x.type, Comprador: x.buyer, Qtd: x.qty, Unid: x.unit, Kg: saleKg(x), "Preco Unit": x.unitPrice, Total: x.total, Situacao: x.payStatus === "recebido" ? "recebido" : "a receber", Forma: x.payMethod || "", "Dinheiro com": x.holder || "" })));

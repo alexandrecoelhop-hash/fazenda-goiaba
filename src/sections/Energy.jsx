@@ -2,6 +2,7 @@ import { useState } from "react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { C } from "../ui/theme";
 import { uid, today, fmtDate, fmtMoney } from "../lib/format";
+import { nomesUsados } from "../lib/registros";
 import { Card, Btn, Icon, Input, Modal, Table, StatCard, RowActions } from "../ui";
 
 // ─── Energy ──────────────────────────────────────────────────────────────────
@@ -36,7 +37,7 @@ export default function Energy({ data, setData }) {
         { key: "acoes", label: "", render: r => <RowActions onEdit={() => openEdit(r)} onCopy={() => openCopy(r)} onDelete={() => setData(d => ({ ...d, energyBills: d.energyBills.filter(x => x.id !== r.id) }))} /> },
       ]} rows={data.energyBills} /></Card>
       {modal && <Modal title={modal === "edit" ? "Editar — Conta de Energia" : modal === "copy" ? "Copiar — Conta de Energia" : "Conta de Energia"} onClose={() => setModal(null)}><div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-        <Input label="Mês referência" value={form.month} onChange={v => setForm(f => ({ ...f, month: v }))} placeholder="Junho/2025" />
+        <Input label="Mês referência" value={form.month} onChange={v => setForm(f => ({ ...f, month: v }))} suggestions={nomesUsados(data.energyBills, "month")} placeholder="Junho/2025" />
         <Input label="Vencimento" type="date" value={form.date} onChange={v => setForm(f => ({ ...f, date: v }))} />
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}><Input label="kWh" type="number" value={form.kwh} onChange={v => setForm(f => ({ ...f, kwh: v }))} /><Input label="Valor (R$)" type="number" value={form.value} onChange={v => setForm(f => ({ ...f, value: v }))} /></div>
         <Input label="Obs" value={form.notes} onChange={v => setForm(f => ({ ...f, notes: v }))} />
