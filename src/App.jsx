@@ -23,7 +23,7 @@ import Finance from "./sections/Finance";
 // ─── NAV ─────────────────────────────────────────────────────────────────────
 const navItems = [
   { key: "dashboard", label: "Dashboard", icon: "dashboard" },
-  { key: "plots", label: "Talhões", icon: "plot" },
+  { key: "plots", label: "Válvulas", icon: "plot" },
   { key: "agronomic", label: "Manejo", icon: "pruning" },
   { key: "fertilizer", label: "Adubação", icon: "fertilizer" },
   { key: "schedule", label: "Cronograma", icon: "calendar" },

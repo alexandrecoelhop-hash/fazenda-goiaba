@@ -2,6 +2,7 @@ import { useState, useRef } from "react";
 import { C } from "../ui/theme";
 import { uid, today, fmt } from "../lib/format";
 import { P_CLASSES, K_CLASSES, ADUBA_PRODUCAO, PARCELAMENTO, FOLIAR, classFor, calcCalagem } from "../data/fertilizer";
+import { valvulaOptions } from "../lib/registros";
 import { Card, Btn, Icon, Input, Select, StatCard } from "../ui";
 
 // ─── RECOMENDACAO DE ADUBACAO (a partir da analise de solo) ──────────────────
@@ -73,7 +74,7 @@ export default function FertilizerAdvisor({ data, setData }) {
         <Card>
           <h4 style={{ margin: "0 0 12px", fontSize: 15, color: C.text }}>Dados da lavoura</h4>
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            <Input label="Talhao / Bloco" value={form.talhao} onChange={v => setForm(s => ({ ...s, talhao: v }))} />
+            <Select label="Válvula" value={form.talhao} onChange={v => setForm(s => ({ ...s, talhao: v }))} options={valvulaOptions(data.agronomicEvents.map(e => e.talhao))} />
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
               <Select label="Cultivar" value={form.cultivar} onChange={v => setForm(s => ({ ...s, cultivar: v, prodClasse: 0 }))} options={[{ value: "Paluma", label: "Paluma" }, { value: "Rica", label: "Rica" }]} />
               <Select label="Produtividade esperada" value={form.prodClasse} onChange={v => setForm(s => ({ ...s, prodClasse: v }))} options={prodOptions} />
@@ -149,7 +150,7 @@ export default function FertilizerAdvisor({ data, setData }) {
 
           {rec.totalHa && (
             <Card style={{ marginBottom: 16 }}>
-              <h4 style={{ margin: "0 0 8px", fontSize: 15, color: C.text }}>Total estimado para o talhao ({rec.plantas} plantas)</h4>
+              <h4 style={{ margin: "0 0 8px", fontSize: 15, color: C.text }}>Total estimado para a válvula ({rec.plantas} plantas)</h4>
               <div style={{ display: "flex", gap: 24, flexWrap: "wrap", fontSize: 14 }}>
                 <div><span style={{ color: C.muted }}>N:</span> <strong>{fmt(rec.totalHa.N, 1)} kg</strong></div>
                 {rec.totalHa.P2O5 != null && <div><span style={{ color: C.muted }}>P2O5:</span> <strong>{fmt(rec.totalHa.P2O5, 1)} kg</strong></div>}

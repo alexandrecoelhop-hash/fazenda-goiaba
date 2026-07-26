@@ -2,8 +2,8 @@ import { useState } from "react";
 import { C } from "../ui/theme";
 import { uid, today, fmtDate } from "../lib/format";
 import { PEST_DB } from "../data/pests";
-import { listaSugestoes } from "../lib/registros";
-import { Card, Btn, Badge, Icon, Input, Modal, Table, RowActions } from "../ui";
+import { listaSugestoes, valvulaOptions } from "../lib/registros";
+import { Card, Btn, Badge, Icon, Input, Select, Modal, Table, RowActions } from "../ui";
 
 // ─── APLICAÇÕES (caderno de campo fitossanitário) ────────────────────────────
 const EMPTY = { date: "", talhao: "", target: "", product: "", active: "", dose: "", volume: "", carencia: "", reentry: "", applicator: "", notes: "" };
@@ -20,7 +20,7 @@ export default function Applications({ data, setData }) {
     setModal(null);
   };
   const applyDbSuggestion = (pestName) => { const p = PEST_DB.find(x => x.nome === pestName); if (p) setForm(f => ({ ...f, target: p.nome, product: p.exemplos[0] || "", active: "" })); };
-  const talhoes = listaSugestoes([], data.plots.map(p => p.name), data.applications.map(a => a.talhao), data.agronomicEvents.map(e => e.talhao));
+  const valvulas = valvulaOptions(data.applications.map(a => a.talhao), data.agronomicEvents.map(e => e.talhao));
   const alvos = listaSugestoes(PEST_DB.map(p => p.nome), data.applications.map(a => a.target));
   const produtos = listaSugestoes([], data.applications.map(a => a.product), data.inputPurchases.map(i => i.name));
   const ativos = listaSugestoes([], data.applications.map(a => a.active));
@@ -34,7 +34,7 @@ export default function Applications({ data, setData }) {
       <Card>
         <Table cols={[
           { key: "date", label: "Data", render: r => fmtDate(r.date) },
-          { key: "talhao", label: "Talhão" },
+          { key: "talhao", label: "Válvula" },
           { key: "target", label: "Alvo" },
           { key: "product", label: "Produto (i.a.)", render: r => <span>{r.product}{r.active ? ` (${r.active})` : ""}</span> },
           { key: "dose", label: "Dose" },
@@ -54,7 +54,7 @@ export default function Applications({ data, setData }) {
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
             <Input label="Data" type="date" value={form.date} onChange={v => setForm(f => ({ ...f, date: v }))} />
-            <Input label="Talhão / Bloco" value={form.talhao} onChange={v => setForm(f => ({ ...f, talhao: v }))} suggestions={talhoes} />
+            <Select label="Válvula" value={form.talhao} onChange={v => setForm(f => ({ ...f, talhao: v }))} options={valvulas} />
             <Input label="Alvo (praga/doença)" value={form.target} onChange={v => setForm(f => ({ ...f, target: v }))} suggestions={alvos} />
             <Input label="Produto comercial" value={form.product} onChange={v => setForm(f => ({ ...f, product: v }))} suggestions={produtos} />
             <Input label="Ingrediente ativo" value={form.active} onChange={v => setForm(f => ({ ...f, active: v }))} suggestions={ativos} />

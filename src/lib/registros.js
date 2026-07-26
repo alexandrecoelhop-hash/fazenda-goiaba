@@ -11,6 +11,17 @@ export const TIPOS_PRODUTO = [
 export const UNIDADES_COMUNS = ["kg", "sc", "L", "mL", "un", "cx", "rl", "pct", "g", "t", "m", "dose"];
 export const VARIEDADES = ["Paluma", "Rica", "Pedro Sato", "Século XXI", "Cortibel", "Kumagai"];
 
+// As duas válvulas de irrigação da fazenda. Manejo, aplicações e adubação
+// são organizados por válvula.
+export const VALVULAS = ["Válvula 1", "Válvula 2"];
+// Opções para o seletor de válvula: as duas fixas + qualquer valor já lançado
+// (mantém compatível com registros antigos que usavam texto livre).
+export const valvulaOptions = (...usados) => {
+  const set = new Set(VALVULAS);
+  usados.flat().forEach(v => { const s = (v ?? "").toString().trim(); if (s) set.add(s); });
+  return [{ value: "", label: "— selecione —" }, ...[...set].map(v => ({ value: v, label: v }))];
+};
+
 // Nomes já usados num campo, para sugerir enquanto o usuário digita
 export const nomesUsados = (lista, campo) =>
   [...new Set(lista.map(x => (x[campo] || "").trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b, "pt-BR"));

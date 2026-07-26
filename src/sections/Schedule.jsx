@@ -2,13 +2,15 @@ import { useState } from "react";
 import { C } from "../ui/theme";
 import { uid, today, addDays, fmtDate } from "../lib/format";
 import { SCHEDULE_TEMPLATE } from "../data/schedule";
-import { Card, Btn, Badge, Icon, Input } from "../ui";
+import { valvulaOptions } from "../lib/registros";
+import { Card, Btn, Badge, Icon, Input, Select } from "../ui";
 
 // ─── CRONOGRAMA ──────────────────────────────────────────────────────────────
 export default function Schedule({ data, setData }) {
   const [startDate, setStartDate] = useState(today());
   const [talhao, setTalhao] = useState("");
   const [generated, setGenerated] = useState([]);
+  const valvulas = valvulaOptions(data.agronomicEvents.map(e => e.talhao), data.applications.map(a => a.talhao));
   const generate = () => setGenerated(SCHEDULE_TEMPLATE.map(t => ({ ...t, id: uid(), date: addDays(startDate, t.offset), talhao })));
   const addToManejo = () => {
     const events = generated.map(g => ({ id: uid(), date: g.date, type: g.tipo, talhao: g.talhao, title: g.titulo, product: "", dose: "", area: "", notes: g.detalhe, nextDate: "" }));
@@ -24,7 +26,7 @@ export default function Schedule({ data, setData }) {
       <Card style={{ marginBottom: 20 }}>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr auto auto", gap: 12, alignItems: "end" }}>
           <Input label="Data da poda / pós-colheita" type="date" value={startDate} onChange={setStartDate} />
-          <Input label="Talhão / Bloco" value={talhao} onChange={setTalhao} placeholder="Ex: Talhão 1 - Paluma" />
+          <Select label="Válvula" value={talhao} onChange={setTalhao} options={valvulas} />
           <Btn onClick={generate}><Icon name="calendar" size={16} color="#fff" /> Gerar cronograma</Btn>
           {generated.length > 0 && <Btn variant="accent" onClick={addToManejo}><Icon name="plus" size={16} color="#1A2E1A" /> Enviar ao Manejo</Btn>}
         </div>
