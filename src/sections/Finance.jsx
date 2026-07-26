@@ -28,6 +28,15 @@ export default function Finance({ data }) {
     { label: "Materiais", value: perKg(materials) },
   ];
 
+  // Ponto de equilíbrio: quanto ainda falta receber/produzir para cobrir o que já foi gasto
+  const semLancamentos = totalCusto === 0 && receita === 0;
+  const noLucro = resultado >= 0;
+  const faltaReceita = Math.max(0, totalCusto - receita);
+  const kgEquilibrio = precoMedioKg > 0 ? totalCusto / precoMedioKg : 0;   // kg totais para empatar (ao preço médio)
+  const faltaKg = Math.max(0, kgEquilibrio - totalKg);
+  const kgAcima = Math.max(0, totalKg - kgEquilibrio);
+  const pctCoberto = totalCusto > 0 ? Math.min(100, (receita / totalCusto) * 100) : 100;
+
   const items = [{ label: "Receita com Frutas", value: receita, t: "r" }, { label: "Insumos", value: insumos, t: "c" }, { label: "Mão de Obra", value: labor, t: "c" }, { label: "Energia", value: energy, t: "c" }, { label: "Materiais", value: materials, t: "c" }];
   const box = (label, value, color, bg) => (
     <div style={{ background: bg, borderRadius: 10, padding: "12px 14px" }}>
@@ -70,6 +79,63 @@ export default function Finance({ data }) {
             </div>
             <div style={{ marginTop: 10, background: C.bg, borderRadius: 8, padding: "8px 12px", fontSize: 13, color: C.textSoft }}>
               Equivale a <strong>{fmtMoney(custoPorCaixa)}</strong> por caixa de {CAIXA_KG} kg.
+            </div>
+          </>
+        )}
+      </Card>
+
+      <Card style={{ marginBottom: 20 }}>
+        <h3 style={{ margin: "0 0 4px", fontSize: 16, color: C.text }}>Quanto falta para começar a dar lucro</h3>
+        <p style={{ margin: "0 0 16px", fontSize: 13, color: C.muted }}>
+          Ponto de equilíbrio a partir do que já foi gasto (<strong>{fmtMoney(totalCusto)}</strong> em custos). Atualiza sozinho a cada lançamento.
+        </p>
+        {semLancamentos ? (
+          <p style={{ margin: 0, fontSize: 13, color: C.muted }}>Ainda não há custos nem vendas lançados.</p>
+        ) : noLucro ? (
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12 }}>
+            <div style={{ background: C.green50, borderRadius: 10, padding: "12px 14px" }}>
+              <div style={{ fontSize: 12, color: C.muted, fontWeight: 600 }}>Situação</div>
+              <div style={{ fontSize: 20, fontWeight: 800, color: C.primary }}>Já dá lucro 🎉</div>
+            </div>
+            <div style={{ background: C.green50, borderRadius: 10, padding: "12px 14px" }}>
+              <div style={{ fontSize: 12, color: C.muted, fontWeight: 600 }}>Lucro atual</div>
+              <div style={{ fontSize: 20, fontWeight: 800, color: C.primary }}>{fmtMoney(resultado)}</div>
+            </div>
+            {precoMedioKg > 0 && (
+              <div style={{ background: C.green50, borderRadius: 10, padding: "12px 14px" }}>
+                <div style={{ fontSize: 12, color: C.muted, fontWeight: 600 }}>Produção acima do equilíbrio</div>
+                <div style={{ fontSize: 20, fontWeight: 800, color: C.primary }}>{fmt(kgAcima, 0)} kg</div>
+              </div>
+            )}
+          </div>
+        ) : !temKg ? (
+          <div style={{ background: C.dangerLight, borderRadius: 10, padding: "12px 14px" }}>
+            <div style={{ fontSize: 12, color: C.muted, fontWeight: 600 }}>Falta receber para empatar</div>
+            <div style={{ fontSize: 22, fontWeight: 800, color: C.danger }}>{fmtMoney(faltaReceita)}</div>
+            <div style={{ fontSize: 12, color: C.muted, marginTop: 4 }}>Lance uma venda para estimar quantos kg faltam (precisamos do preço de venda).</div>
+          </div>
+        ) : (
+          <>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12, marginBottom: 16 }}>
+              <div style={{ background: C.dangerLight, borderRadius: 10, padding: "12px 14px" }}>
+                <div style={{ fontSize: 12, color: C.muted, fontWeight: 600 }}>Falta produzir</div>
+                <div style={{ fontSize: 22, fontWeight: 800, color: C.danger }}>{fmt(faltaKg, 0)} kg</div>
+                <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>= {fmt(faltaKg / CAIXA_KG, 1)} caixas de {CAIXA_KG} kg</div>
+              </div>
+              <div style={{ background: C.dangerLight, borderRadius: 10, padding: "12px 14px" }}>
+                <div style={{ fontSize: 12, color: C.muted, fontWeight: 600 }}>Falta receber</div>
+                <div style={{ fontSize: 22, fontWeight: 800, color: C.danger }}>{fmtMoney(faltaReceita)}</div>
+                <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>ao preço médio de {fmtMoney(precoMedioKg)}/kg</div>
+              </div>
+            </div>
+            <div style={{ fontSize: 12, color: C.muted, fontWeight: 600, marginBottom: 6, display: "flex", justifyContent: "space-between" }}>
+              <span>Custos já cobertos pela receita</span><span>{fmt(pctCoberto, 0)}%</span>
+            </div>
+            <div style={{ background: C.border, borderRadius: 999, height: 12, overflow: "hidden" }}>
+              <div style={{ width: `${pctCoberto}%`, height: "100%", background: C.accent, transition: "width .3s" }} />
+            </div>
+            <div style={{ marginTop: 10, fontSize: 13, color: C.textSoft }}>
+              No equilíbrio você terá vendido <strong>{fmt(kgEquilibrio, 0)} kg</strong> ({fmt(kgEquilibrio / CAIXA_KG, 1)} caixas). Já foram {fmt(totalKg, 0)} kg.
             </div>
           </>
         )}
