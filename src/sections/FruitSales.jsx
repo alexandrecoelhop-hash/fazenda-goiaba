@@ -27,11 +27,13 @@ export default function FruitSales({ data, setData }) {
   const buyerNames = [...new Set(data.fruitSales.map(x => (x.buyer || "").trim()).filter(Boolean))].sort();
   const caixa = paymentSummary(data.fruitSales);
   const totalValue = data.fruitSales.reduce((s, x) => s + Number(x.total || 0), 0);
+  const precoMedioKg = totalKg > 0 ? totalValue / totalKg : 0;
+  const precoMedioCaixa = precoMedioKg * CAIXA_KG;
   const precoKg = isCaixa(form) && Number(form.unitPrice) > 0 ? Number(form.unitPrice) / CAIXA_KG : null;
   return (
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 20 }}><h2 style={{ margin: 0, color: C.text }}>Venda de Frutas</h2><Btn onClick={openNew}><Icon name="plus" size={16} color="#fff" /> Nova Venda</Btn></div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}><StatCard label="Produção Vendida" value={`${fmt(totalKg, 0)} kg`} icon="fruit" color={C.primary} sub={`= ${fmt(totalKg / CAIXA_KG, 1)} caixas de ${CAIXA_KG} kg`} /><StatCard label="Receita" value={fmtMoney(totalValue)} icon="finance" color={C.primaryLight} /></div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 16, marginBottom: 16 }}><StatCard label="Produção Vendida" value={`${fmt(totalKg, 0)} kg`} icon="fruit" color={C.primary} sub={`= ${fmt(totalKg / CAIXA_KG, 1)} caixas de ${CAIXA_KG} kg`} /><StatCard label="Receita" value={fmtMoney(totalValue)} icon="finance" color={C.primaryLight} /><StatCard label="Preço médio por caixa" value={totalKg > 0 ? fmtMoney(precoMedioCaixa) : "—"} icon="fruit" color={C.accentDark} sub={totalKg > 0 ? `${fmtMoney(precoMedioKg)} / kg · caixa de ${CAIXA_KG} kg` : "sem vendas lançadas"} /></div>
       <Card style={{ marginBottom: 16 }}>
         <h4 style={{ margin: "0 0 12px", color: C.text, fontSize: 15 }}>💰 Resumo do dinheiro</h4>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>

@@ -3,6 +3,7 @@ import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Toolti
 import { C, CHART_COLORS } from "../ui/theme";
 import { fmt, fmtMoney, fmtDate, monthKey, today } from "../lib/format";
 import { saleKg } from "../lib/sales";
+import { PLANTAS_PRODUZINDO } from "../lib/fazenda";
 import { Card, StatCard, Badge } from "../ui";
 
 // ─── DASHBOARD (com gráficos) ─────────────────────────────────────────────────
@@ -47,6 +48,10 @@ export default function Dashboard({ data }) {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+      <div style={{ background: C.green50, border: `1px solid ${C.border}`, borderRadius: 10, padding: "10px 14px", fontSize: 13, color: C.textSoft, display: "flex", alignItems: "center", gap: 8 }}>
+        <span style={{ fontSize: 16 }}>🌱</span>
+        <span>Hoje temos <strong style={{ color: C.primary }}>{fmt(PLANTAS_PRODUZINDO, 0)} goiabeiras</strong> em produção.</span>
+      </div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 16 }}>
         <StatCard label="Receita com Frutas" value={fmtMoney(receita)} icon="fruit" color={C.primary} />
         <StatCard label="Custo Total" value={fmtMoney(totalCustos)} icon="buy" color={C.danger} />

@@ -38,11 +38,13 @@ export default function Finance({ data }) {
   const pctCoberto = totalCusto > 0 ? Math.min(100, (receita / totalCusto) * 100) : 100;
 
   const items = [{ label: "Receita com Frutas", value: receita, t: "r" }, { label: "Insumos", value: insumos, t: "c" }, { label: "Mão de Obra", value: labor, t: "c" }, { label: "Energia", value: energy, t: "c" }, { label: "Materiais", value: materials, t: "c" }];
-  const box = (label, value, color, bg) => (
+  const precoMedioCaixa = precoMedioKg * CAIXA_KG;
+  const resultadoPorCaixa = resultadoPorKg * CAIXA_KG;
+  const box = (label, value, color, bg, sub = "por kg") => (
     <div style={{ background: bg, borderRadius: 10, padding: "12px 14px" }}>
       <div style={{ fontSize: 12, color: C.muted, fontWeight: 600 }}>{label}</div>
       <div style={{ fontSize: 20, fontWeight: 800, color }}>{fmtMoney(value)}</div>
-      <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>por kg</div>
+      <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>{sub}</div>
     </div>
   );
   return (
@@ -62,9 +64,9 @@ export default function Finance({ data }) {
         {temKg && (
           <>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12, marginBottom: 16 }}>
-              {box("Custo por kg", custoPorKg, C.danger, C.dangerLight)}
-              {box("Preço médio recebido", precoMedioKg, C.primary, C.green50)}
-              {box(resultadoPorKg >= 0 ? "Lucro por kg" : "Prejuízo por kg", Math.abs(resultadoPorKg), resultadoPorKg >= 0 ? C.primary : C.danger, resultadoPorKg >= 0 ? C.green50 : C.dangerLight)}
+              {box("Custo por kg", custoPorKg, C.danger, C.dangerLight, `= ${fmtMoney(custoPorCaixa)} / caixa`)}
+              {box("Preço médio recebido", precoMedioKg, C.primary, C.green50, `= ${fmtMoney(precoMedioCaixa)} / caixa`)}
+              {box(resultadoPorKg >= 0 ? "Lucro por kg" : "Prejuízo por kg", Math.abs(resultadoPorKg), resultadoPorKg >= 0 ? C.primary : C.danger, resultadoPorKg >= 0 ? C.green50 : C.dangerLight, `= ${fmtMoney(Math.abs(resultadoPorCaixa))} / caixa`)}
             </div>
             <div style={{ fontSize: 12, color: C.muted, fontWeight: 600, marginBottom: 6 }}>De onde vem o custo por kg</div>
             {perKgItems.map((it, i) => (
@@ -78,7 +80,7 @@ export default function Finance({ data }) {
               <span style={{ color: C.danger }}>{fmtMoney(custoPorKg)} / kg</span>
             </div>
             <div style={{ marginTop: 10, background: C.bg, borderRadius: 8, padding: "8px 12px", fontSize: 13, color: C.textSoft }}>
-              Equivale a <strong>{fmtMoney(custoPorCaixa)}</strong> por caixa de {CAIXA_KG} kg.
+              Por caixa de {CAIXA_KG} kg: preço médio recebido <strong>{fmtMoney(precoMedioCaixa)}</strong> · custo <strong>{fmtMoney(custoPorCaixa)}</strong>.
             </div>
           </>
         )}
