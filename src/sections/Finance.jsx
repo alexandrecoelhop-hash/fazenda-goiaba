@@ -1,5 +1,6 @@
 import { C } from "../ui/theme";
-import { fmtMoney } from "../lib/format";
+import { fmt, fmtMoney } from "../lib/format";
+import { saleKg, CAIXA_KG } from "../lib/sales";
 import { Card, StatCard } from "../ui";
 
 // ─── Finance ─────────────────────────────────────────────────────────────────
@@ -11,13 +12,69 @@ export default function Finance({ data }) {
   const materials = data.materialTransactions.filter(x => x.type === "compra").reduce((s, x) => s + Number(x.total || 0), 0);
   const totalCusto = insumos + labor + energy + materials;
   const resultado = receita - totalCusto;
+
+  // Custo por kg = custo total ÷ kg produzidos (vendidos)
+  const totalKg = data.fruitSales.reduce((s, x) => s + saleKg(x), 0);
+  const temKg = totalKg > 0;
+  const perKg = (v) => (temKg ? v / totalKg : 0);
+  const custoPorKg = perKg(totalCusto);
+  const precoMedioKg = perKg(receita);
+  const resultadoPorKg = perKg(resultado);
+  const custoPorCaixa = custoPorKg * CAIXA_KG;
+  const perKgItems = [
+    { label: "Insumos", value: perKg(insumos) },
+    { label: "Mão de Obra", value: perKg(labor) },
+    { label: "Energia", value: perKg(energy) },
+    { label: "Materiais", value: perKg(materials) },
+  ];
+
   const items = [{ label: "Receita com Frutas", value: receita, t: "r" }, { label: "Insumos", value: insumos, t: "c" }, { label: "Mão de Obra", value: labor, t: "c" }, { label: "Energia", value: energy, t: "c" }, { label: "Materiais", value: materials, t: "c" }];
+  const box = (label, value, color, bg) => (
+    <div style={{ background: bg, borderRadius: 10, padding: "12px 14px" }}>
+      <div style={{ fontSize: 12, color: C.muted, fontWeight: 600 }}>{label}</div>
+      <div style={{ fontSize: 20, fontWeight: 800, color }}>{fmtMoney(value)}</div>
+      <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>por kg</div>
+    </div>
+  );
   return (
     <div>
       <h2 style={{ margin: "0 0 20px", color: C.text }}>Resumo Financeiro</h2>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16, marginBottom: 20 }}>
         <StatCard label="Receita" value={fmtMoney(receita)} icon="fruit" color={C.primary} /><StatCard label="Custos" value={fmtMoney(totalCusto)} icon="buy" color={C.danger} /><StatCard label={resultado >= 0 ? "Lucro" : "Prejuízo"} value={fmtMoney(Math.abs(resultado))} icon="finance" color={resultado >= 0 ? C.primaryLight : C.danger} />
       </div>
+
+      <Card style={{ marginBottom: 20 }}>
+        <h3 style={{ margin: "0 0 4px", fontSize: 16, color: C.text }}>Custo por quilo produzido</h3>
+        <p style={{ margin: "0 0 16px", fontSize: 13, color: C.muted }}>
+          {temKg
+            ? <>Baseado em <strong>{fmt(totalKg, 0)} kg</strong> vendidos (= {fmt(totalKg / CAIXA_KG, 1)} caixas de {CAIXA_KG} kg). Atualiza sozinho a cada lançamento.</>
+            : "Lance ao menos uma venda de fruta para calcular o custo por quilo."}
+        </p>
+        {temKg && (
+          <>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12, marginBottom: 16 }}>
+              {box("Custo por kg", custoPorKg, C.danger, C.dangerLight)}
+              {box("Preço médio recebido", precoMedioKg, C.primary, C.green50)}
+              {box(resultadoPorKg >= 0 ? "Lucro por kg" : "Prejuízo por kg", Math.abs(resultadoPorKg), resultadoPorKg >= 0 ? C.primary : C.danger, resultadoPorKg >= 0 ? C.green50 : C.dangerLight)}
+            </div>
+            <div style={{ fontSize: 12, color: C.muted, fontWeight: 600, marginBottom: 6 }}>De onde vem o custo por kg</div>
+            {perKgItems.map((it, i) => (
+              <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: `1px solid ${C.border}`, fontSize: 13 }}>
+                <span style={{ color: C.textSoft }}>{it.label}</span>
+                <span style={{ fontWeight: 600, color: C.text }}>{fmtMoney(it.value)} / kg</span>
+              </div>
+            ))}
+            <div style={{ display: "flex", justifyContent: "space-between", padding: "12px 0 0", fontSize: 15, fontWeight: 800 }}>
+              <span style={{ color: C.text }}>Custo total por kg</span>
+              <span style={{ color: C.danger }}>{fmtMoney(custoPorKg)} / kg</span>
+            </div>
+            <div style={{ marginTop: 10, background: C.bg, borderRadius: 8, padding: "8px 12px", fontSize: 13, color: C.textSoft }}>
+              Equivale a <strong>{fmtMoney(custoPorCaixa)}</strong> por caixa de {CAIXA_KG} kg.
+            </div>
+          </>
+        )}
+      </Card>
+
       <Card>
         <h3 style={{ margin: "0 0 16px", fontSize: 16, color: C.text }}>Demonstrativo de Resultado (DRE)</h3>
         {items.map((it, i) => (<div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "10px 0", borderBottom: `1px solid ${C.border}`, fontSize: 14 }}><span style={{ color: C.textSoft }}>{it.label}</span><span style={{ fontWeight: 700, color: it.t === "r" ? C.primary : C.danger }}>{it.t === "r" ? "+" : "-"} {fmtMoney(it.value)}</span></div>))}

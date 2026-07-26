@@ -14,6 +14,8 @@ export default function Dashboard({ data }) {
   const materials = data.materialTransactions.filter(x => x.type === "compra").reduce((s, x) => s + Number(x.total || 0), 0);
   const totalCustos = insumos + labor + energy + materials;
   const saldo = receita - totalCustos;
+  const totalKg = data.fruitSales.reduce((s, x) => s + saleKg(x), 0);
+  const custoPorKg = totalKg > 0 ? totalCustos / totalKg : 0;
 
   const monthly = useMemo(() => {
     const m = {};
@@ -46,6 +48,7 @@ export default function Dashboard({ data }) {
         <StatCard label="Receita com Frutas" value={fmtMoney(receita)} icon="fruit" color={C.primary} />
         <StatCard label="Custo Total" value={fmtMoney(totalCustos)} icon="buy" color={C.danger} />
         <StatCard label="Resultado" value={fmtMoney(saldo)} icon="finance" color={saldo >= 0 ? C.primaryLight : C.danger} sub={saldo >= 0 ? "Lucro" : "Prejuízo"} />
+        <StatCard label="Custo por kg" value={totalKg > 0 ? fmtMoney(custoPorKg) : "—"} icon="buy" color={C.accentDark} sub={totalKg > 0 ? `${fmt(totalKg, 0)} kg produzidos` : "sem produção lançada"} />
         <StatCard label="Estoque" value={`${data.stockItems.length} itens`} icon="stock" color={C.accentDark} sub={stockAlerts.length ? `⚠ ${stockAlerts.length} em alerta` : "OK"} />
       </div>
 
