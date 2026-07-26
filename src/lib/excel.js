@@ -29,6 +29,7 @@ export function exportToExcel(data) {
     { Indicador: "Produção vendida (kg)", Valor: rnd(totalKg) },
     { Indicador: "Custo por kg (R$/kg)", Valor: perKg(totalCusto) },
     { Indicador: "Preço médio recebido (R$/kg)", Valor: perKg(receita) },
+    { Indicador: `Preço médio recebido por caixa de ${CAIXA_KG} kg (R$)`, Valor: rnd(perKg(receita) * CAIXA_KG) },
     { Indicador: "Resultado por kg (R$/kg)", Valor: perKg(receita - totalCusto) },
     { Indicador: `Custo por caixa de ${CAIXA_KG} kg (R$)`, Valor: rnd(perKg(totalCusto) * CAIXA_KG) },
     { Indicador: "  Insumos por kg (R$/kg)", Valor: perKg(insumos) },
