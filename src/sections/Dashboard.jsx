@@ -16,6 +16,9 @@ export default function Dashboard({ data }) {
   const saldo = receita - totalCustos;
   const totalKg = data.fruitSales.reduce((s, x) => s + saleKg(x), 0);
   const custoPorKg = totalKg > 0 ? totalCustos / totalKg : 0;
+  // Quanto ainda falta produzir para cobrir o que já foi gasto (ao preço médio de venda)
+  const precoMedioKg = totalKg > 0 ? receita / totalKg : 0;
+  const faltaKg = precoMedioKg > 0 ? Math.max(0, totalCustos / precoMedioKg - totalKg) : 0;
 
   const monthly = useMemo(() => {
     const m = {};
@@ -49,6 +52,7 @@ export default function Dashboard({ data }) {
         <StatCard label="Custo Total" value={fmtMoney(totalCustos)} icon="buy" color={C.danger} />
         <StatCard label="Resultado" value={fmtMoney(saldo)} icon="finance" color={saldo >= 0 ? C.primaryLight : C.danger} sub={saldo >= 0 ? "Lucro" : "Prejuízo"} />
         <StatCard label="Custo por kg" value={totalKg > 0 ? fmtMoney(custoPorKg) : "—"} icon="buy" color={C.accentDark} sub={totalKg > 0 ? `${fmt(totalKg, 0)} kg produzidos` : "sem produção lançada"} />
+        <StatCard label="Falta p/ dar lucro" value={saldo >= 0 ? "no lucro ✓" : (precoMedioKg > 0 ? `${fmt(faltaKg, 0)} kg` : "—")} icon="fruit" color={saldo >= 0 ? C.primaryLight : C.accentDark} sub={saldo >= 0 ? "já passou do equilíbrio" : (precoMedioKg > 0 ? `faltam ${fmtMoney(totalCustos - receita)}` : "lance uma venda")} />
         <StatCard label="Estoque" value={`${data.stockItems.length} itens`} icon="stock" color={C.accentDark} sub={stockAlerts.length ? `⚠ ${stockAlerts.length} em alerta` : "OK"} />
       </div>
 
