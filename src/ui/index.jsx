@@ -71,8 +71,8 @@ export const Select = ({ label, value, onChange, options, style = {} }) => (
     </select>
   </div>
 );
-export const Card = ({ children, style = {} }) => (
-  <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 14, padding: 24, ...style }}>{children}</div>
+export const Card = ({ children, style = {}, onClick }) => (
+  <div onClick={onClick} style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 14, padding: 24, ...(onClick ? { cursor: "pointer" } : null), ...style }}>{children}</div>
 );
 export const Modal = ({ title, onClose, children, wide }) => (
   <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.45)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
@@ -85,14 +85,15 @@ export const Modal = ({ title, onClose, children, wide }) => (
     </div>
   </div>
 );
-export const StatCard = ({ label, value, color = C.primary, icon, sub }) => (
-  <Card style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
+export const StatCard = ({ label, value, color = C.primary, icon, sub, onClick }) => (
+  <Card onClick={onClick} style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
     <div style={{ background: color + "18", borderRadius: 10, padding: 10 }}><Icon name={icon} size={24} color={color} /></div>
     <div>
       <div style={{ fontSize: 12, color: C.muted, fontWeight: 600, marginBottom: 2 }}>{label}</div>
       <div style={{ fontSize: 22, fontWeight: 700, color: C.text }}>{value}</div>
       {sub && <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>{sub}</div>}
     </div>
+    {onClick && <div style={{ marginLeft: "auto", alignSelf: "center", color: C.muted, fontSize: 20, lineHeight: 1 }}>›</div>}
   </Card>
 );
 export const Table = ({ cols, rows, empty = "Nenhum registro." }) => {
