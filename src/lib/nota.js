@@ -135,8 +135,42 @@ export async function lerPdfNota(arrayBuffer) {
 }
 
 // ─── Foto da nota: OCR no próprio aparelho ───────────────────────────────────
-// Reduz a foto antes do OCR — mais rápido e evita estourar a memória no celular.
-async function imagemReduzida(file, maxLado = 2200) {
+// Binariza (preto/branco) com limiar adaptativo (Bradley): remove a iluminação
+// irregular e o baixo contraste da foto, o que melhora muito a leitura do OCR.
+function binarizar(cv) {
+  const ctx = cv.getContext("2d");
+  const w = cv.width, h = cv.height;
+  const imgData = ctx.getImageData(0, 0, w, h);
+  const d = imgData.data;
+  const gray = new Float64Array(w * h);
+  for (let i = 0, p = 0; i < d.length; i += 4, p++) gray[p] = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+  // imagem integral, para a média de cada janela sair em O(1)
+  const W = w + 1;
+  const integ = new Float64Array(W * (h + 1));
+  for (let y = 0; y < h; y++) {
+    let soma = 0;
+    for (let x = 0; x < w; x++) {
+      soma += gray[y * w + x];
+      integ[(y + 1) * W + (x + 1)] = integ[y * W + (x + 1)] + soma;
+    }
+  }
+  const meia = Math.max(4, Math.floor(w / 48)), t = 0.15;
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const x1 = Math.max(0, x - meia), y1 = Math.max(0, y - meia);
+      const x2 = Math.min(w - 1, x + meia), y2 = Math.min(h - 1, y + meia);
+      const cnt = (x2 - x1 + 1) * (y2 - y1 + 1);
+      const sum = integ[(y2 + 1) * W + (x2 + 1)] - integ[y1 * W + (x2 + 1)] - integ[(y2 + 1) * W + x1] + integ[y1 * W + x1];
+      const p = y * w + x, preto = gray[p] * cnt < sum * (1 - t), v = preto ? 0 : 255;
+      d[p * 4] = d[p * 4 + 1] = d[p * 4 + 2] = v;
+    }
+  }
+  ctx.putImageData(imgData, 0, 0);
+  return cv;
+}
+
+// Prepara a foto para o OCR: reduz o tamanho (memória/velocidade) e binariza.
+async function prepararImagem(file, maxLado = 2200) {
   const url = URL.createObjectURL(file);
   try {
     const img = await new Promise((res, rej) => {
@@ -146,12 +180,11 @@ async function imagemReduzida(file, maxLado = 2200) {
       im.src = url;
     });
     const escala = Math.min(1, maxLado / Math.max(img.width, img.height));
-    if (escala === 1) return file;
     const cv = document.createElement("canvas");
-    cv.width = Math.round(img.width * escala);
-    cv.height = Math.round(img.height * escala);
+    cv.width = Math.max(1, Math.round(img.width * escala));
+    cv.height = Math.max(1, Math.round(img.height * escala));
     cv.getContext("2d").drawImage(img, 0, 0, cv.width, cv.height);
-    return await new Promise(res => cv.toBlob(res, "image/jpeg", 0.92));
+    return binarizar(cv);
   } finally {
     URL.revokeObjectURL(url);
   }
@@ -162,7 +195,7 @@ export async function lerImagemNota(file, onProgress) {
   const mod = await import("tesseract.js");
   const createWorker = mod.createWorker || (mod.default && mod.default.createWorker);
   if (!createWorker) throw new Error("Leitor de foto indisponível neste navegador.");
-  const img = await imagemReduzida(file);
+  const canvas = await prepararImagem(file);
   const worker = await createWorker("por", 1, {
     logger: (m) => { if (onProgress && m.status === "recognizing text") onProgress(Math.round((m.progress || 0) * 100)); },
   });
@@ -170,7 +203,7 @@ export async function lerImagemNota(file, onProgress) {
   try {
     // PSM 6 = trata a imagem como um bloco uniforme de texto (bom para a tabela recortada)
     await worker.setParameters({ tessedit_pageseg_mode: "6" });
-    const { data } = await worker.recognize(img);
+    const { data } = await worker.recognize(canvas);
     texto = data?.text || "";
   } finally {
     await worker.terminate();
