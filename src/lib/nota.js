@@ -74,29 +74,32 @@ const UNID_SET = new Set(UNIDADES);
 // Um token numérico da nota: "2", "020", "2,0000", "245,00", "1.234,56", "3105.90.90"
 const ehNumero = (t) => /^\d[\d.]*(,\d+)?$/.test(t);
 
-// Limpa a descrição: tira o código do produto (início) e NCM/CST/CFOP (fim)
+// Limpa a descrição: tira o código do produto (início) e tudo do NCM em diante
+// (NCM/CST/CFOP/unidade), para o nome sair limpo mesmo com a unidade ilegível.
 function limparDescricao(toks) {
-  const arr = [...toks];
-  while (arr.length && /^\d{3,}$/.test(arr[0])) arr.shift();              // código do produto
-  while (arr.length && /^[\d.,/-]+$/.test(arr[arr.length - 1])) arr.pop(); // NCM / CST / CFOP
+  let arr = [...toks];
+  while (arr.length && /^\d{3,}$/.test(arr[0])) arr.shift(); // código do produto
+  const iNcm = arr.findIndex(t => /^\d{4}\.?\d{2}\.?\d{2}$/.test(t) || /^\d{8}$/.test(t)); // NCM
+  if (iNcm >= 0) arr = arr.slice(0, iNcm);
+  else while (arr.length && /^[\d.,/-]+$/.test(arr[arr.length - 1])) arr.pop();
   return arr.join(" ").replace(/\s+/g, " ").trim();
 }
 
-// Numa linha, acha a unidade seguida de Qtd, V.Unit, V.Total (com Qtd × V.Unit ≈ V.Total).
-// Isso ignora "unidades falsas" que aparecem na descrição (ex.: "ELEITTO 1L", "50 KG").
+// Numa linha, acha Qtd, V.Unit e V.Total: 3 números seguidos com Qtd × V.Unit ≈ V.Total.
+// Não depende da unidade estar legível (o OCR erra bastante nessa coluna) nem de
+// "unidades falsas" na descrição (ex.: "ELEITTO 1L", "50 KG").
 function itemDaLinha(linha, id) {
   const toks = linha.replace(/[|¦︱]+/g, " ").split(/\s+/).filter(Boolean);
-  for (let u = 1; u <= toks.length - 4; u++) {
-    const unidade = toks[u].toLowerCase().replace(/[.,;:]+$/, "");
-    if (!UNID_SET.has(unidade)) continue;
-    const [a, b, c] = [toks[u + 1], toks[u + 2], toks[u + 3]];
-    if (!ehNumero(a) || !ehNumero(b) || !ehNumero(c)) continue;
-    const q = num(a), vu = num(b), vt = num(c);
-    if (q <= 0 || vt <= 0) continue;
+  for (let k = 0; k + 2 < toks.length; k++) {
+    if (!ehNumero(toks[k]) || !ehNumero(toks[k + 1]) || !ehNumero(toks[k + 2])) continue;
+    const q = num(toks[k]), vu = num(toks[k + 1]), vt = num(toks[k + 2]);
+    if (q <= 0 || vu <= 0 || vt <= 0) continue;
     if (Math.abs(q * vu - vt) > Math.max(0.05, vt * 0.02)) continue; // as contas têm que fechar
-    const desc = limparDescricao(toks.slice(0, u));
+    // unidade = token anterior, se for uma unidade conhecida
+    const prev = (toks[k - 1] || "").toLowerCase().replace(/[.,;:]+$/, "");
+    const desc = limparDescricao(toks.slice(0, k));
     if (!desc || desc.length < 3) continue;
-    return { id, nome: desc.slice(0, 60), unidade, qtd: q, valorUnit: vu, total: vt };
+    return { id, nome: desc.slice(0, 60), unidade: UNID_SET.has(prev) ? prev : "un", qtd: q, valorUnit: vu, total: vt };
   }
   return null;
 }
@@ -175,7 +178,9 @@ export async function lerImagemNota(file, onProgress) {
   const linhas = texto.split("\n").map(l => l.replace(/\s+/g, " ").trim()).filter(Boolean);
   const itens = itensDeLinhas(linhas, "f");
   if (!itens.length) throw new Error("Não consegui identificar os produtos na foto. Recorte só a lista de produtos (com quantidade e valores), com boa luz e sem inclinar — ou use o XML/PDF.");
-  return { origem: "Foto da nota", ...metaDeLinhas(linhas), itens };
+  // No recorte da foto o cabeçalho (loja/nº/data) normalmente não aparece,
+  // então deixamos em branco para o usuário preencher (a loja tem sugestões).
+  return { origem: "Foto da nota", loja: "", numero: "", data: "", itens };
 }
 
 export async function lerNota(file) {

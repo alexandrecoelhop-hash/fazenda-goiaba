@@ -129,9 +129,13 @@ export default function ImportarNota({ data, setData }) {
   const mudarItem = (id, campo, valor) => setNota(n => ({ ...n, itens: n.itens.map(i => i.id === id ? { ...i, [campo]: valor } : i) }));
   const marcarTodos = (destino) => setNota(n => ({ ...n, itens: n.itens.map(i => ({ ...i, destino })) }));
 
+  const totalItem = (i) => Number(i.qtd || 0) * Number(i.valorUnit || 0);
+  const adicionarItem = () => setNota(n => ({ ...n, itens: [...n.itens, { id: uid(), nome: "", unidade: "un", qtd: 1, valorUnit: 0, destino: "estoque_compra", categoria: "insumo" }] }));
+  const removerItem = (id) => setNota(n => ({ ...n, itens: n.itens.filter(x => x.id !== id) }));
+
   const meus = nota ? nota.itens.filter(i => i.destino !== "fora") : [];
-  const totalMeu = meus.reduce((s, i) => s + Number(i.total || 0), 0);
-  const totalNota = nota ? nota.itens.reduce((s, i) => s + Number(i.total || 0), 0) : 0;
+  const totalMeu = meus.reduce((s, i) => s + totalItem(i), 0);
+  const totalNota = nota ? nota.itens.reduce((s, i) => s + totalItem(i), 0) : 0;
 
   const importar = () => {
     if (!meus.length) return;
@@ -143,7 +147,7 @@ export default function ImportarNota({ data, setData }) {
         if (idx >= 0) stockItems[idx] = { ...stockItems[idx], qty: Number(stockItems[idx].qty || 0) + Number(i.qtd) };
         else stockItems = [{ id: uid(), name: i.nome, category: i.categoria, unit: i.unidade, qty: i.qtd, minQty: 0 }, ...stockItems];
         if (i.destino === "estoque_compra") {
-          compras.push({ id: uid(), type: "compra", date: dataNota, name: i.nome, description: nota.numero ? `NF ${nota.numero}` : "", counter: loja, qty: i.qtd, unit: i.unidade, unitPrice: i.valorUnit, total: i.total, nf: nota.numero || "" });
+          compras.push({ id: uid(), type: "compra", date: dataNota, name: i.nome, description: nota.numero ? `NF ${nota.numero}` : "", counter: loja, qty: i.qtd, unit: i.unidade, unitPrice: i.valorUnit, total: totalItem(i), nf: nota.numero || "" });
         }
       });
       return { ...d, stockItems, inputPurchases: [...compras, ...d.inputPurchases] };
@@ -254,12 +258,14 @@ export default function ImportarNota({ data, setData }) {
                     <Input label="Preço unit." type="number" value={i.valorUnit} onChange={v => mudarItem(i.id, "valorUnit", v)} />
                     <Select label="Categoria" value={i.categoria} onChange={v => mudarItem(i.id, "categoria", v)} options={["insumo", "defensivo", "material", "embalagem", "ferramenta", "outro"].map(c => ({ value: c, label: c }))} />
                   </div>
-                  <div style={{ textAlign: "right", fontSize: 13, color: C.textSoft, marginTop: 6 }}>
-                    Total do item: <strong style={{ color: fora ? C.muted : C.primary }}>{fmtMoney(Number(i.qtd) * Number(i.valorUnit))}</strong>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 6 }}>
+                    <button onClick={() => removerItem(i.id)} style={{ background: "none", border: "none", color: C.danger, cursor: "pointer", fontSize: 12, fontFamily: "inherit", padding: 0 }}>Remover</button>
+                    <span style={{ fontSize: 13, color: C.textSoft }}>Total do item: <strong style={{ color: fora ? C.muted : C.primary }}>{fmtMoney(totalItem(i))}</strong></span>
                   </div>
                 </div>
               );
             })}
+            <Btn variant="ghost" onClick={adicionarItem} style={{ marginTop: 4 }}><Icon name="plus" size={14} color={C.primary} /> Adicionar item</Btn>
           </Card>
 
           <Card>
