@@ -1,32 +1,76 @@
 import { useState, useRef } from "react";
+import ReactCrop from "react-image-crop";
+import "react-image-crop/dist/ReactCrop.css";
 import { C } from "../ui/theme";
 import { uid, today, fmt, fmtMoney } from "../lib/format";
 import { lerNota, lerImagemNota } from "../lib/nota";
 import { nomesUsados } from "../lib/registros";
 import { Card, Btn, Badge, Icon, Input, Select } from "../ui";
 
-// ─── Importar nota fiscal (PDF/XML) → conferência item a item → estoque ──────
+// ─── Importar nota fiscal (PDF/XML/foto) → conferência item a item → estoque ─
 const DESTINOS = [
   { value: "estoque_compra", label: "Estoque + compra" },
   { value: "estoque", label: "Só estoque" },
   { value: "fora", label: "Não é meu" },
 ];
 
+// Carrega uma imagem (de uma URL) já pronta para desenhar em canvas
+const carregarImagem = (src) => new Promise((res, rej) => {
+  const im = new Image();
+  im.onload = () => res(im);
+  im.onerror = () => rej(new Error("Não consegui abrir a imagem."));
+  im.src = src;
+});
+
+// Gira a foto 90° (para notas fotografadas deitadas) → devolve novo blob
+async function rotacionar90(url) {
+  const img = await carregarImagem(url);
+  const cv = document.createElement("canvas");
+  cv.width = img.naturalHeight;
+  cv.height = img.naturalWidth;
+  const ctx = cv.getContext("2d");
+  ctx.translate(cv.width / 2, cv.height / 2);
+  ctx.rotate(Math.PI / 2);
+  ctx.drawImage(img, -img.naturalWidth / 2, -img.naturalHeight / 2);
+  return await new Promise(r => cv.toBlob(r, "image/jpeg", 0.92));
+}
+
+// Recorta a região selecionada (crop em px relativos ao tamanho exibido) → blob
+async function recortarBlob(imgEl, crop) {
+  const usar = crop && crop.width > 4 && crop.height > 4;
+  const escalaX = imgEl.naturalWidth / imgEl.width;
+  const escalaY = imgEl.naturalHeight / imgEl.height;
+  const sx = usar ? crop.x * escalaX : 0;
+  const sy = usar ? crop.y * escalaY : 0;
+  const sw = usar ? crop.width * escalaX : imgEl.naturalWidth;
+  const sh = usar ? crop.height * escalaY : imgEl.naturalHeight;
+  const cv = document.createElement("canvas");
+  cv.width = Math.max(1, Math.round(sw));
+  cv.height = Math.max(1, Math.round(sh));
+  cv.getContext("2d").drawImage(imgEl, sx, sy, sw, sh, 0, 0, cv.width, cv.height);
+  return await new Promise(r => cv.toBlob(r, "image/jpeg", 0.95));
+}
+
 export default function ImportarNota({ data, setData }) {
   const [nota, setNota] = useState(null);
   const [erro, setErro] = useState("");
   const [feito, setFeito] = useState(null);
   const [lendo, setLendo] = useState(false);
-  const [progresso, setProgresso] = useState(null); // % do OCR da foto (null = não é foto)
+  const [progresso, setProgresso] = useState(null); // % do OCR da foto
+  const [fotoUrl, setFotoUrl] = useState(null);      // foto escolhida, aguardando recorte
+  const [crop, setCrop] = useState();                // seleção de recorte
   const [loja, setLoja] = useState("");
   const [dataNota, setDataNota] = useState(today());
   const fileRef = useRef();
-  const fotoRef = useRef();
+  const cameraRef = useRef();
+  const galeriaRef = useRef();
+  const imgRef = useRef();
 
   const lojasConhecidas = nomesUsados(data.inputPurchases, "counter");
 
   const abrir = async (e) => {
     const file = e.target.files[0];
+    e.target.value = "";
     if (!file) return;
     setErro(""); setFeito(null); setLendo(true); setNota(null);
     try {
@@ -38,23 +82,48 @@ export default function ImportarNota({ data, setData }) {
       setErro(err.message || "Não consegui ler este arquivo.");
     }
     setLendo(false);
-    e.target.value = "";
   };
 
-  const abrirFoto = async (e) => {
+  // Escolheu uma foto (câmera ou galeria): mostra para recortar antes de ler
+  const escolherFoto = (e) => {
     const file = e.target.files[0];
+    e.target.value = "";
     if (!file) return;
-    setErro(""); setFeito(null); setLendo(true); setNota(null); setProgresso(0);
+    setErro(""); setFeito(null); setNota(null); setCrop(undefined);
+    if (fotoUrl) URL.revokeObjectURL(fotoUrl);
+    setFotoUrl(URL.createObjectURL(file));
+  };
+
+  const girarFoto = async () => {
+    if (!fotoUrl || lendo) return;
     try {
-      const lida = await lerImagemNota(file, (pct) => setProgresso(pct));
+      const b = await rotacionar90(fotoUrl);
+      URL.revokeObjectURL(fotoUrl);
+      setFotoUrl(URL.createObjectURL(b));
+      setCrop(undefined);
+    } catch (err) { setErro(err.message || "Não consegui girar a foto."); }
+  };
+
+  const cancelarFoto = () => {
+    if (fotoUrl) URL.revokeObjectURL(fotoUrl);
+    setFotoUrl(null); setCrop(undefined);
+  };
+
+  const lerRecorte = async () => {
+    if (!imgRef.current || lendo) return;
+    setErro(""); setFeito(null); setLendo(true); setProgresso(0);
+    try {
+      const blob = await recortarBlob(imgRef.current, crop);
+      const lida = await lerImagemNota(blob, (pct) => setProgresso(pct));
       setNota({ ...lida, itens: lida.itens.map(i => ({ ...i, destino: "estoque_compra", categoria: "insumo" })) });
       setLoja(lida.loja || "");
       setDataNota(lida.data || today());
+      if (fotoUrl) URL.revokeObjectURL(fotoUrl);
+      setFotoUrl(null); setCrop(undefined);
     } catch (err) {
       setErro(err.message || "Não consegui ler a foto.");
     }
     setLendo(false); setProgresso(null);
-    e.target.value = "";
   };
 
   const mudarItem = (id, campo, valor) => setNota(n => ({ ...n, itens: n.itens.map(i => i.id === id ? { ...i, [campo]: valor } : i) }));
@@ -84,32 +153,56 @@ export default function ImportarNota({ data, setData }) {
     setNota(null);
   };
 
+  const barraProgresso = lendo && progresso != null && (
+    <div style={{ marginTop: 12 }}>
+      <div style={{ fontSize: 13, color: C.textSoft, marginBottom: 6 }}>{progresso === 0 ? "Preparando o leitor de foto…" : `Lendo a foto no aparelho… ${progresso}%`}</div>
+      <div style={{ background: C.border, borderRadius: 999, height: 10, overflow: "hidden" }}>
+        <div style={{ width: `${Math.max(progresso, 4)}%`, height: "100%", background: C.primary, transition: "width .2s" }} />
+      </div>
+    </div>
+  );
+
   return (
     <div>
       <h2 style={{ margin: "0 0 8px", color: C.text }}>Importar Nota Fiscal</h2>
       <p style={{ color: C.muted, fontSize: 13, marginTop: 0, marginBottom: 20 }}>
-        Envie o <strong>XML</strong> (leitura exata), o <strong>PDF</strong>, ou <strong>tire uma foto</strong> da nota pelo celular. O app lê os produtos e você confere item a item o que é seu antes de entrar no estoque.
-        As notas são lidas no próprio aparelho — não vão para a internet. A leitura por <strong>foto</strong> pode errar mais, então confira bem os valores.
+        Envie o <strong>XML</strong> (leitura exata), o <strong>PDF</strong>, ou uma <strong>foto</strong> da nota (câmera ou galeria). O app lê os produtos e você confere item a item o que é seu antes de entrar no estoque.
+        As notas são lidas no próprio aparelho — não vão para a internet. Na foto, <strong>recorte só a lista de produtos</strong> para acertar mais.
       </p>
 
       <Card style={{ marginBottom: 20 }}>
         <input ref={fileRef} type="file" accept=".pdf,.xml,application/pdf,text/xml" onChange={abrir} style={{ display: "none" }} />
-        <input ref={fotoRef} type="file" accept="image/*" capture="environment" onChange={abrirFoto} style={{ display: "none" }} />
+        <input ref={cameraRef} type="file" accept="image/*" capture="environment" onChange={escolherFoto} style={{ display: "none" }} />
+        <input ref={galeriaRef} type="file" accept="image/*" onChange={escolherFoto} style={{ display: "none" }} />
         <div style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center" }}>
           <Btn onClick={() => fileRef.current.click()}><Icon name="excel" size={16} color="#fff" /> {lendo && progresso == null ? "Lendo…" : "Escolher nota (PDF ou XML)"}</Btn>
-          <Btn variant="ghost" onClick={() => fotoRef.current.click()}><Icon name="camera" size={16} color={C.primary} /> Tirar foto da nota</Btn>
+          <Btn variant="ghost" onClick={() => cameraRef.current.click()}><Icon name="camera" size={16} color={C.primary} /> Tirar foto da nota</Btn>
+          <Btn variant="ghost" onClick={() => galeriaRef.current.click()}>🖼️ Escolher foto (galeria)</Btn>
           {nota && <Badge color={C.primary}>{nota.origem}{nota.numero ? ` · NF ${nota.numero}` : ""}</Badge>}
         </div>
-        {lendo && progresso != null && (
-          <div style={{ marginTop: 12 }}>
-            <div style={{ fontSize: 13, color: C.textSoft, marginBottom: 6 }}>{progresso === 0 ? "Preparando o leitor de foto…" : `Lendo a foto no aparelho… ${progresso}%`}</div>
-            <div style={{ background: C.border, borderRadius: 999, height: 10, overflow: "hidden" }}>
-              <div style={{ width: `${Math.max(progresso, 4)}%`, height: "100%", background: C.primary, transition: "width .2s" }} />
-            </div>
-          </div>
-        )}
+        {!fotoUrl && barraProgresso}
         {erro && <div style={{ background: C.dangerLight, color: "#7a2018", borderRadius: 9, padding: "10px 12px", fontSize: 13, marginTop: 12 }}>⚠ {erro}</div>}
       </Card>
+
+      {fotoUrl && !nota && (
+        <Card style={{ marginBottom: 20 }}>
+          <div style={{ fontSize: 13, color: C.textSoft, marginBottom: 10 }}>
+            Arraste sobre a foto para selecionar <strong>só a lista de produtos</strong> (com quantidade e valores). Depois toque em <strong>Ler produtos</strong>. Se a foto estiver deitada, use <strong>Girar</strong>.
+          </div>
+          <div style={{ display: "inline-block", maxWidth: "100%", background: "#000", borderRadius: 8, overflow: "hidden" }}>
+            <ReactCrop crop={crop} onChange={(c) => setCrop(c)}>
+              <img ref={imgRef} src={fotoUrl} alt="foto da nota" style={{ display: "block", maxWidth: "100%", maxHeight: "60vh" }} />
+            </ReactCrop>
+          </div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 12 }}>
+            <Btn onClick={lerRecorte}><Icon name="check" size={16} color="#fff" /> {lendo ? "Lendo…" : "Ler produtos"}</Btn>
+            <Btn variant="ghost" onClick={girarFoto}>↻ Girar</Btn>
+            <Btn variant="ghost" onClick={() => (crop ? setCrop(undefined) : null)}>Limpar seleção</Btn>
+            <Btn variant="ghost" onClick={cancelarFoto}>Cancelar</Btn>
+          </div>
+          {barraProgresso}
+        </Card>
+      )}
 
       {feito && (
         <Card style={{ marginBottom: 20, borderLeft: `4px solid ${C.primaryLight}`, background: C.green50 }}>

@@ -136,15 +136,24 @@ async function imagemReduzida(file, maxLado = 2200) {
 // Lê os produtos de uma FOTO da nota. onProgress(pct) reporta 0–100 durante a leitura.
 export async function lerImagemNota(file, onProgress) {
   const mod = await import("tesseract.js");
-  const recognize = mod.recognize || (mod.default && mod.default.recognize);
-  if (!recognize) throw new Error("Leitor de foto indisponível neste navegador.");
+  const createWorker = mod.createWorker || (mod.default && mod.default.createWorker);
+  if (!createWorker) throw new Error("Leitor de foto indisponível neste navegador.");
   const img = await imagemReduzida(file);
-  const { data } = await recognize(img, "por", {
+  const worker = await createWorker("por", 1, {
     logger: (m) => { if (onProgress && m.status === "recognizing text") onProgress(Math.round((m.progress || 0) * 100)); },
   });
-  const linhas = (data?.text || "").split("\n").map(l => l.replace(/\s+/g, " ").trim()).filter(Boolean);
+  let texto = "";
+  try {
+    // PSM 6 = trata a imagem como um bloco uniforme de texto (bom para a tabela recortada)
+    await worker.setParameters({ tessedit_pageseg_mode: "6" });
+    const { data } = await worker.recognize(img);
+    texto = data?.text || "";
+  } finally {
+    await worker.terminate();
+  }
+  const linhas = texto.split("\n").map(l => l.replace(/\s+/g, " ").trim()).filter(Boolean);
   const itens = itensDeLinhas(linhas, "f");
-  if (!itens.length) throw new Error("Não consegui identificar os produtos na foto. Enquadre só a lista de produtos, com boa luz e sem inclinar a câmera — ou use o XML/PDF.");
+  if (!itens.length) throw new Error("Não consegui identificar os produtos na foto. Recorte só a lista de produtos (com quantidade e valores), com boa luz e sem inclinar — ou use o XML/PDF.");
   return { origem: "Foto da nota", ...metaDeLinhas(linhas), itens };
 }
 
