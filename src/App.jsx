@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from "react";
 import { C } from "./ui/theme";
 import { Btn, Icon } from "./ui";
-import { getCfg, logout, loadData, saveData } from "./lib/supabase";
+import { getCfg, logout, loadData, saveData, descreverErro } from "./lib/supabase";
 import { useIsMobile, isMobileNow } from "./lib/useIsMobile";
 import { exportToExcel } from "./lib/excel";
+import { Modal } from "./ui";
 import Login from "./Login";
 import Dashboard from "./sections/Dashboard";
 import Plots from "./sections/Plots";
@@ -67,6 +68,8 @@ function FarmApp() {
   const [data, setData] = useState(EMPTY);
   const [loaded, setLoaded] = useState(false);
   const [saveState, setSaveState] = useState("idle"); // idle | saving | saved | error
+  const [erroSync, setErroSync] = useState(null);     // último erro de sincronização
+  const [verErro, setVerErro] = useState(false);      // modal de detalhes do erro
   const skipNextSave = useRef(true);
   const versaoLocal = useRef(0);      // conta as alterações feitas neste aparelho
   const naoSalvo = useRef(false);     // há alteração local ainda não gravada na nuvem
@@ -86,8 +89,8 @@ function FarmApp() {
       // descarta o que veio da nuvem se algo foi alterado aqui nesse meio tempo
       const houveAlteracaoLocal = versaoLocal.current !== versaoAntes || naoSalvo.current;
       if (remoto && !houveAlteracaoLocal) { skipNextSave.current = true; setData({ ...EMPTY, ...remoto }); }
-      if (!silencioso) setSaveState("saved");
-    } catch (e) { if (!silencioso) setSaveState("error"); }
+      if (!silencioso) { setErroSync(null); setSaveState("saved"); }
+    } catch (e) { if (!silencioso) { setErroSync(e); setSaveState("error"); } }
     setLoaded(true);
   };
   useEffect(() => { puxarNuvem(false); }, []);
@@ -113,12 +116,26 @@ function FarmApp() {
       try {
         await saveData(data);
         naoSalvo.current = false;
+        setErroSync(null);
         setSaveState("saved");
         setTimeout(() => setSaveState(s => s === "saved" ? "idle" : s), 1500);
-      } catch (e) { setSaveState("error"); }
+      } catch (e) { setErroSync(e); setSaveState("error"); }
     }, 800);
     return () => clearTimeout(t);
   }, [data, loaded]);
+
+  // Tenta salvar de novo (a partir do aviso de erro)
+  const tentarSalvar = async () => {
+    setSaveState("saving");
+    try {
+      await saveData(data);
+      naoSalvo.current = false;
+      setErroSync(null);
+      setVerErro(false);
+      setSaveState("saved");
+      setTimeout(() => setSaveState(s => s === "saved" ? "idle" : s), 1500);
+    } catch (e) { setErroSync(e); setSaveState("error"); }
+  };
 
   const sideW = isMobile ? 240 : (sideOpen ? 210 : 58);
   const goTo = (key) => { setPage(key); if (isMobile) setSideOpen(false); };
@@ -151,11 +168,17 @@ function FarmApp() {
             <h1 style={{ margin: 0, fontSize: isMobile ? 16 : 18, color: C.text, fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{navItems.find(n => n.key === page)?.label}</h1>
           </div>
           <div style={{ display: "flex", gap: isMobile ? 8 : 12, alignItems: "center" }}>
-            <span style={{ fontSize: 12, color: saveState === "error" ? C.danger : saveState === "saved" ? C.primary : C.muted, fontWeight: saveState === "idle" ? 400 : 600, minWidth: isMobile ? 0 : 110, textAlign: "right" }}>
-              {isMobile
-                ? (saveState === "saving" ? "☁…" : saveState === "saved" ? "☁ ✓" : saveState === "error" ? "⚠" : "☁")
-                : (saveState === "saving" ? "☁ Salvando…" : saveState === "saved" ? "☁ ✓ Sincronizado" : saveState === "error" ? "⚠ Erro ao salvar" : "☁ na nuvem")}
-            </span>
+            {saveState === "error" ? (
+              <button onClick={() => setVerErro(true)} title="Ver detalhes do erro" style={{ background: "none", border: "none", cursor: "pointer", color: C.danger, fontWeight: 700, fontSize: 12, fontFamily: "inherit", padding: 0, textAlign: "right", whiteSpace: "nowrap" }}>
+                {isMobile ? "⚠ ver erro" : "⚠ Erro ao salvar — ver detalhes"}
+              </button>
+            ) : (
+              <span style={{ fontSize: 12, color: saveState === "saved" ? C.primary : C.muted, fontWeight: saveState === "idle" ? 400 : 600, minWidth: isMobile ? 0 : 110, textAlign: "right" }}>
+                {isMobile
+                  ? (saveState === "saving" ? "☁…" : saveState === "saved" ? "☁ ✓" : "☁")
+                  : (saveState === "saving" ? "☁ Salvando…" : saveState === "saved" ? "☁ ✓ Sincronizado" : "☁ na nuvem")}
+              </span>
+            )}
             <button onClick={() => { if (window.confirm("Sair da conta neste aparelho? Os dados continuam salvos na nuvem.")) { logout(); location.reload(); } }} style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 8, padding: "5px 10px", fontSize: 12, color: C.muted, cursor: "pointer", fontFamily: "inherit" }}>Sair</button>
             <Btn variant="accent" size="sm" onClick={() => exportToExcel(data)}><Icon name="excel" size={16} color="#1A2E1A" />{!isMobile && " Exportar Excel"}</Btn>
           </div>
@@ -178,6 +201,27 @@ function FarmApp() {
           {page === "finance" && <Finance data={data} />}
         </div>
       </div>
+      {verErro && (
+        <Modal title="Erro ao sincronizar" onClose={() => setVerErro(false)}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <div style={{ background: C.dangerLight, color: "#7a2018", borderRadius: 10, padding: "12px 14px", fontSize: 14 }}>
+              {descreverErro(erroSync)}
+            </div>
+            {erroSync && (erroSync.message || erroSync.code) && (
+              <div style={{ fontSize: 12, color: C.muted, wordBreak: "break-word" }}>
+                Detalhe técnico: {erroSync.code ? `[${erroSync.code}] ` : ""}{erroSync.message || String(erroSync)}
+              </div>
+            )}
+            <div style={{ fontSize: 12, color: C.muted }}>
+              Seus dados deste aparelho não se perdem — o app tenta salvar de novo sozinho. Toque em “Tentar de novo” quando a conexão voltar.
+            </div>
+            <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+              <Btn variant="ghost" onClick={() => setVerErro(false)}>Fechar</Btn>
+              <Btn onClick={tentarSalvar}><Icon name="check" size={16} color="#fff" /> Tentar de novo</Btn>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }
