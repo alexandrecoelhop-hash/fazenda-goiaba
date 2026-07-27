@@ -67,25 +67,46 @@ async function textoDoPdf(arrayBuffer) {
   return linhas.filter(Boolean);
 }
 
-// Linha de produto da DANFE termina com números: ... UN QTD VL.UNIT VL.TOTAL ...
-const RE_ITEM = /^(.*?)\s+([A-Za-zçÇ]{1,6})\s+([\d.,]+)\s+([\d.,]+)\s+([\d.,]+)(?:\s|$)/;
-const UNIDADES = ["un", "und", "unid", "kg", "sc", "lt", "l", "ml", "cx", "pc", "pct", "sac", "g", "mt", "m", "rl", "fd", "bd", "gl", "to", "ton"];
+// Unidades comerciais aceitas na coluna "Un" da DANFE
+const UNIDADES = ["un", "und", "unid", "kg", "sc", "lt", "l", "ml", "cx", "pc", "pct", "sac", "g", "mt", "m", "rl", "fd", "bd", "gl", "to", "ton", "pç", "pcs", "par", "dz"];
+const UNID_SET = new Set(UNIDADES);
+
+// Um token numérico da nota: "2", "020", "2,0000", "245,00", "1.234,56", "3105.90.90"
+const ehNumero = (t) => /^\d[\d.]*(,\d+)?$/.test(t);
+
+// Limpa a descrição: tira o código do produto (início) e NCM/CST/CFOP (fim)
+function limparDescricao(toks) {
+  const arr = [...toks];
+  while (arr.length && /^\d{3,}$/.test(arr[0])) arr.shift();              // código do produto
+  while (arr.length && /^[\d.,/-]+$/.test(arr[arr.length - 1])) arr.pop(); // NCM / CST / CFOP
+  return arr.join(" ").replace(/\s+/g, " ").trim();
+}
+
+// Numa linha, acha a unidade seguida de Qtd, V.Unit, V.Total (com Qtd × V.Unit ≈ V.Total).
+// Isso ignora "unidades falsas" que aparecem na descrição (ex.: "ELEITTO 1L", "50 KG").
+function itemDaLinha(linha, id) {
+  const toks = linha.replace(/[|¦︱]+/g, " ").split(/\s+/).filter(Boolean);
+  for (let u = 1; u <= toks.length - 4; u++) {
+    const unidade = toks[u].toLowerCase().replace(/[.,;:]+$/, "");
+    if (!UNID_SET.has(unidade)) continue;
+    const [a, b, c] = [toks[u + 1], toks[u + 2], toks[u + 3]];
+    if (!ehNumero(a) || !ehNumero(b) || !ehNumero(c)) continue;
+    const q = num(a), vu = num(b), vt = num(c);
+    if (q <= 0 || vt <= 0) continue;
+    if (Math.abs(q * vu - vt) > Math.max(0.05, vt * 0.02)) continue; // as contas têm que fechar
+    const desc = limparDescricao(toks.slice(0, u));
+    if (!desc || desc.length < 3) continue;
+    return { id, nome: desc.slice(0, 60), unidade, qtd: q, valorUnit: vu, total: vt };
+  }
+  return null;
+}
 
 // Extrai os itens a partir de linhas de texto (serve para o PDF e para a foto/OCR)
 export function itensDeLinhas(linhas, prefixo = "p") {
   const itens = [];
   linhas.forEach((linha, i) => {
-    const m = linha.match(RE_ITEM);
-    if (!m) return;
-    let [, desc, unidade, qtd, vUnit, vTotal] = m;
-    if (!UNIDADES.includes(unidade.toLowerCase())) return;
-    // tira código do produto e NCM/CFOP do começo/fim da descrição
-    desc = desc.replace(/^\s*\d{3,}\s+/, "").replace(/\s+\d{8}\s+\d{0,4}\s*\d{0,4}\s*$/, "").replace(/\s+\d{4,8}$/g, "").trim();
-    const q = num(qtd), vu = num(vUnit), vt = num(vTotal);
-    if (!desc || desc.length < 3 || q <= 0 || vt <= 0) return;
-    // confere se as contas fecham (evita pegar linha de imposto/total)
-    if (Math.abs(q * vu - vt) > Math.max(0.05, vt * 0.02)) return;
-    itens.push({ id: `${prefixo}${i}`, nome: desc.slice(0, 60), unidade: unidade.toLowerCase(), qtd: q, valorUnit: vu, total: vt });
+    const item = itemDaLinha(linha, `${prefixo}${i}`);
+    if (item) itens.push(item);
   });
   return itens;
 }
