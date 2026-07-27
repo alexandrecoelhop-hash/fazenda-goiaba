@@ -71,35 +71,81 @@ async function textoDoPdf(arrayBuffer) {
 const RE_ITEM = /^(.*?)\s+([A-Za-zçÇ]{1,6})\s+([\d.,]+)\s+([\d.,]+)\s+([\d.,]+)(?:\s|$)/;
 const UNIDADES = ["un", "und", "unid", "kg", "sc", "lt", "l", "ml", "cx", "pc", "pct", "sac", "g", "mt", "m", "rl", "fd", "bd", "gl", "to", "ton"];
 
-export async function lerPdfNota(arrayBuffer) {
-  const linhas = await textoDoPdf(arrayBuffer);
+// Extrai os itens a partir de linhas de texto (serve para o PDF e para a foto/OCR)
+export function itensDeLinhas(linhas, prefixo = "p") {
   const itens = [];
   linhas.forEach((linha, i) => {
     const m = linha.match(RE_ITEM);
     if (!m) return;
     let [, desc, unidade, qtd, vUnit, vTotal] = m;
     if (!UNIDADES.includes(unidade.toLowerCase())) return;
-    // tira código do produto e NCM/CFOP do começo da descrição
+    // tira código do produto e NCM/CFOP do começo/fim da descrição
     desc = desc.replace(/^\s*\d{3,}\s+/, "").replace(/\s+\d{8}\s+\d{0,4}\s*\d{0,4}\s*$/, "").replace(/\s+\d{4,8}$/g, "").trim();
     const q = num(qtd), vu = num(vUnit), vt = num(vTotal);
     if (!desc || desc.length < 3 || q <= 0 || vt <= 0) return;
     // confere se as contas fecham (evita pegar linha de imposto/total)
     if (Math.abs(q * vu - vt) > Math.max(0.05, vt * 0.02)) return;
-    itens.push({ id: `p${i}`, nome: desc.slice(0, 60), unidade: unidade.toLowerCase(), qtd: q, valorUnit: vu, total: vt });
+    itens.push({ id: `${prefixo}${i}`, nome: desc.slice(0, 60), unidade: unidade.toLowerCase(), qtd: q, valorUnit: vu, total: vt });
   });
-  if (!itens.length) throw new Error("Não consegui identificar os produtos neste PDF. Você pode lançar os itens manualmente em Insumos, ou tentar com o arquivo XML da nota.");
+  return itens;
+}
 
+// Cabeçalho aproximado (loja, número, data) a partir das linhas de texto
+function metaDeLinhas(linhas) {
   const texto = linhas.join(" ");
   const loja = (linhas.find(l => /LTDA|ME\b|EIRELI|S\/A|S\.A|COMERCIO|AGRO/i.test(l)) || "").slice(0, 60);
   const numero = (texto.match(/N[ºo°]\.?\s*0*([\d.]{3,})/i) || [])[1] || "";
   const data = (texto.match(/(\d{2})\/(\d{2})\/(\d{4})/) || []).slice(1);
   return {
-    origem: "PDF da nota",
     loja: loja.trim(),
     numero: numero.replace(/\./g, ""),
     data: data.length ? `${data[2]}-${data[1]}-${data[0]}` : "",
-    itens,
   };
+}
+
+export async function lerPdfNota(arrayBuffer) {
+  const linhas = await textoDoPdf(arrayBuffer);
+  const itens = itensDeLinhas(linhas, "p");
+  if (!itens.length) throw new Error("Não consegui identificar os produtos neste PDF. Você pode lançar os itens manualmente em Insumos, ou tentar com o arquivo XML da nota.");
+  return { origem: "PDF da nota", ...metaDeLinhas(linhas), itens };
+}
+
+// ─── Foto da nota: OCR no próprio aparelho ───────────────────────────────────
+// Reduz a foto antes do OCR — mais rápido e evita estourar a memória no celular.
+async function imagemReduzida(file, maxLado = 2200) {
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await new Promise((res, rej) => {
+      const im = new Image();
+      im.onload = () => res(im);
+      im.onerror = () => rej(new Error("Não consegui abrir a imagem."));
+      im.src = url;
+    });
+    const escala = Math.min(1, maxLado / Math.max(img.width, img.height));
+    if (escala === 1) return file;
+    const cv = document.createElement("canvas");
+    cv.width = Math.round(img.width * escala);
+    cv.height = Math.round(img.height * escala);
+    cv.getContext("2d").drawImage(img, 0, 0, cv.width, cv.height);
+    return await new Promise(res => cv.toBlob(res, "image/jpeg", 0.92));
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+// Lê os produtos de uma FOTO da nota. onProgress(pct) reporta 0–100 durante a leitura.
+export async function lerImagemNota(file, onProgress) {
+  const mod = await import("tesseract.js");
+  const recognize = mod.recognize || (mod.default && mod.default.recognize);
+  if (!recognize) throw new Error("Leitor de foto indisponível neste navegador.");
+  const img = await imagemReduzida(file);
+  const { data } = await recognize(img, "por", {
+    logger: (m) => { if (onProgress && m.status === "recognizing text") onProgress(Math.round((m.progress || 0) * 100)); },
+  });
+  const linhas = (data?.text || "").split("\n").map(l => l.replace(/\s+/g, " ").trim()).filter(Boolean);
+  const itens = itensDeLinhas(linhas, "f");
+  if (!itens.length) throw new Error("Não consegui identificar os produtos na foto. Enquadre só a lista de produtos, com boa luz e sem inclinar a câmera — ou use o XML/PDF.");
+  return { origem: "Foto da nota", ...metaDeLinhas(linhas), itens };
 }
 
 export async function lerNota(file) {
