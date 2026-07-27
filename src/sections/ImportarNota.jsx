@@ -1,7 +1,7 @@
 import { useState, useRef } from "react";
 import { C } from "../ui/theme";
 import { uid, today, fmt, fmtMoney } from "../lib/format";
-import { lerNota } from "../lib/nota";
+import { lerNota, lerImagemNota } from "../lib/nota";
 import { nomesUsados } from "../lib/registros";
 import { Card, Btn, Badge, Icon, Input, Select } from "../ui";
 
@@ -17,9 +17,11 @@ export default function ImportarNota({ data, setData }) {
   const [erro, setErro] = useState("");
   const [feito, setFeito] = useState(null);
   const [lendo, setLendo] = useState(false);
+  const [progresso, setProgresso] = useState(null); // % do OCR da foto (null = não é foto)
   const [loja, setLoja] = useState("");
   const [dataNota, setDataNota] = useState(today());
   const fileRef = useRef();
+  const fotoRef = useRef();
 
   const lojasConhecidas = nomesUsados(data.inputPurchases, "counter");
 
@@ -36,6 +38,22 @@ export default function ImportarNota({ data, setData }) {
       setErro(err.message || "Não consegui ler este arquivo.");
     }
     setLendo(false);
+    e.target.value = "";
+  };
+
+  const abrirFoto = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setErro(""); setFeito(null); setLendo(true); setNota(null); setProgresso(0);
+    try {
+      const lida = await lerImagemNota(file, (pct) => setProgresso(pct));
+      setNota({ ...lida, itens: lida.itens.map(i => ({ ...i, destino: "estoque_compra", categoria: "insumo" })) });
+      setLoja(lida.loja || "");
+      setDataNota(lida.data || today());
+    } catch (err) {
+      setErro(err.message || "Não consegui ler a foto.");
+    }
+    setLendo(false); setProgresso(null);
     e.target.value = "";
   };
 
@@ -70,16 +88,26 @@ export default function ImportarNota({ data, setData }) {
     <div>
       <h2 style={{ margin: "0 0 8px", color: C.text }}>Importar Nota Fiscal</h2>
       <p style={{ color: C.muted, fontSize: 13, marginTop: 0, marginBottom: 20 }}>
-        Envie o <strong>PDF</strong> ou o <strong>XML</strong> da nota. O app lê os produtos e você confere item a item o que é seu antes de entrar no estoque.
-        O arquivo é lido no próprio aparelho — não vai para a internet.
+        Envie o <strong>XML</strong> (leitura exata), o <strong>PDF</strong>, ou <strong>tire uma foto</strong> da nota pelo celular. O app lê os produtos e você confere item a item o que é seu antes de entrar no estoque.
+        As notas são lidas no próprio aparelho — não vão para a internet. A leitura por <strong>foto</strong> pode errar mais, então confira bem os valores.
       </p>
 
       <Card style={{ marginBottom: 20 }}>
         <input ref={fileRef} type="file" accept=".pdf,.xml,application/pdf,text/xml" onChange={abrir} style={{ display: "none" }} />
+        <input ref={fotoRef} type="file" accept="image/*" capture="environment" onChange={abrirFoto} style={{ display: "none" }} />
         <div style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center" }}>
-          <Btn onClick={() => fileRef.current.click()}><Icon name="excel" size={16} color="#fff" /> {lendo ? "Lendo…" : "Escolher nota (PDF ou XML)"}</Btn>
+          <Btn onClick={() => fileRef.current.click()}><Icon name="excel" size={16} color="#fff" /> {lendo && progresso == null ? "Lendo…" : "Escolher nota (PDF ou XML)"}</Btn>
+          <Btn variant="ghost" onClick={() => fotoRef.current.click()}><Icon name="camera" size={16} color={C.primary} /> Tirar foto da nota</Btn>
           {nota && <Badge color={C.primary}>{nota.origem}{nota.numero ? ` · NF ${nota.numero}` : ""}</Badge>}
         </div>
+        {lendo && progresso != null && (
+          <div style={{ marginTop: 12 }}>
+            <div style={{ fontSize: 13, color: C.textSoft, marginBottom: 6 }}>{progresso === 0 ? "Preparando o leitor de foto…" : `Lendo a foto no aparelho… ${progresso}%`}</div>
+            <div style={{ background: C.border, borderRadius: 999, height: 10, overflow: "hidden" }}>
+              <div style={{ width: `${Math.max(progresso, 4)}%`, height: "100%", background: C.primary, transition: "width .2s" }} />
+            </div>
+          </div>
+        )}
         {erro && <div style={{ background: C.dangerLight, color: "#7a2018", borderRadius: 9, padding: "10px 12px", fontSize: 13, marginTop: 12 }}>⚠ {erro}</div>}
       </Card>
 
