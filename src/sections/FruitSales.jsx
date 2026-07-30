@@ -71,7 +71,11 @@ export default function FruitSales({ data, setData }) {
             {(r.payMethod || holderLabel(r.holder)) && <span style={{ fontSize: 11, color: C.muted }}>{[r.payMethod, holderLabel(r.holder)].filter(Boolean).join(" · ")}</span>}
           </div>
         ) },
-        { key: "a", label: "", render: r => <RowActions onEdit={() => openEdit(r)} onCopy={() => openCopy(r)} onDelete={() => setData(d => ({ ...d, fruitSales: d.fruitSales.filter(x => x.id !== r.id) }))} /> },
+        { key: "a", label: "", render: r => <RowActions
+          extra={r.payStatus === "recebido"
+            ? <Btn size="sm" variant="ghost" onClick={() => togglePay(r.id)}>↩ Desfazer</Btn>
+            : <Btn size="sm" variant="accent" onClick={() => togglePay(r.id)}><Icon name="check" size={14} color="#1A2E1A" /> Receber</Btn>}
+          onEdit={() => openEdit(r)} onCopy={() => openCopy(r)} onDelete={() => setData(d => ({ ...d, fruitSales: d.fruitSales.filter(x => x.id !== r.id) }))} /> },
       ]} rows={data.fruitSales} /></Card>
       <Card style={{ marginTop: 16 }}>
         <h4 style={{ margin: "0 0 12px", color: C.text, fontSize: 15 }}>🧾 Registro por comprador</h4>
