@@ -43,9 +43,10 @@ export const Btn = ({ onClick, variant = "primary", size = "md", children, style
   };
   return <button style={{ ...base, ...v[variant], ...style }} onClick={onClick}>{children}</button>;
 };
-// Ações padrão de cada linha/registro: Editar, Copiar e Excluir
-export const RowActions = ({ onEdit, onCopy, onDelete }) => (
+// Ações padrão de cada linha/registro: (extra) + Editar, Copiar e Excluir
+export const RowActions = ({ onEdit, onCopy, onDelete, extra }) => (
   <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+    {extra}
     {onEdit && <Btn size="sm" variant="ghost" onClick={onEdit}>Editar</Btn>}
     {onCopy && <Btn size="sm" variant="ghost" onClick={onCopy}>Copiar</Btn>}
     {onDelete && <Btn size="sm" variant="danger" onClick={onDelete}><Icon name="trash" size={14} color="#fff" /></Btn>}
