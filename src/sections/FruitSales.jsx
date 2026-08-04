@@ -5,7 +5,12 @@ import { CAIXA_KG, isCaixa, saleKg, buyerSummary, paymentSummary } from "../lib/
 import { Card, Btn, Badge, Icon, Input, Select, Modal, Table, StatCard, RowActions } from "../ui";
 
 // ─── FruitSales ──────────────────────────────────────────────────────────────
-const EMPTY_FORM = { date: "", type: "verde", buyer: "", qty: "", unit: "kg", unitPrice: "", notes: "", payStatus: "a_receber", payMethod: "pix", holder: "comigo" };
+const LOCAIS = [{ value: "roça", label: "Roça" }, { value: "cidade", label: "Cidade" }];
+const ENTREGADORES = [{ value: "eu", label: "Eu" }, { value: "matheus", label: "Matheus" }];
+const localLabel = (v) => (LOCAIS.find(l => l.value === v) || {}).label || "";
+const entregadorLabel = (v) => (ENTREGADORES.find(e => e.value === v) || {}).label || "";
+const EMPTY_FILTRO = { buyer: "", type: "", payStatus: "", local: "", entregador: "" };
+const EMPTY_FORM = { date: "", type: "verde", buyer: "", qty: "", unit: "kg", unitPrice: "", notes: "", payStatus: "a_receber", payMethod: "pix", holder: "comigo", local: "roça", entregador: "eu" };
 
 export default function FruitSales({ data, setData }) {
   const [modal, setModal] = useState(null); // null | "new" | "edit"
@@ -30,6 +35,26 @@ export default function FruitSales({ data, setData }) {
   const precoMedioKg = totalKg > 0 ? totalValue / totalKg : 0;
   const precoMedioCaixa = precoMedioKg * CAIXA_KG;
   const precoKg = isCaixa(form) && Number(form.unitPrice) > 0 ? Number(form.unitPrice) / CAIXA_KG : null;
+
+  // Filtro / relatório
+  const [filtro, setFiltro] = useState(EMPTY_FILTRO);
+  const temFiltro = filtro.buyer || filtro.type || filtro.payStatus || filtro.local || filtro.entregador;
+  const vendasFiltradas = data.fruitSales.filter(x =>
+    (!filtro.buyer || (x.buyer || "").trim() === filtro.buyer) &&
+    (!filtro.type || x.type === filtro.type) &&
+    (!filtro.payStatus || (x.payStatus === "recebido" ? "recebido" : "a_receber") === filtro.payStatus) &&
+    (!filtro.local || (x.local || "") === filtro.local) &&
+    (!filtro.entregador || (x.entregador || "") === filtro.entregador)
+  );
+  const fKg = vendasFiltradas.reduce((s, x) => s + saleKg(x), 0);
+  const fTotal = vendasFiltradas.reduce((s, x) => s + Number(x.total || 0), 0);
+  const fAReceber = vendasFiltradas.filter(x => x.payStatus !== "recebido").reduce((s, x) => s + Number(x.total || 0), 0);
+  const resumoFiltro = [
+    { label: "Vendas", valor: String(vendasFiltradas.length), cor: C.text },
+    { label: "Quilos", valor: `${fmt(fKg, 0)} kg`, cor: C.text },
+    { label: "Total", valor: fmtMoney(fTotal), cor: C.primary },
+    { label: "A receber", valor: fmtMoney(fAReceber), cor: fAReceber > 0 ? C.danger : C.primary },
+  ];
   return (
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 20 }}><h2 style={{ margin: 0, color: C.text }}>Venda de Frutas</h2><Btn onClick={openNew}><Icon name="plus" size={16} color="#fff" /> Nova Venda</Btn></div>
@@ -59,9 +84,30 @@ export default function FruitSales({ data, setData }) {
           ))}
         </div>
       </Card>
+      <Card style={{ marginBottom: 16 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
+          <h4 style={{ margin: 0, color: C.text, fontSize: 15 }}>🔎 Filtrar / Relatório</h4>
+          {temFiltro && <Btn size="sm" variant="ghost" onClick={() => setFiltro(EMPTY_FILTRO)}>Limpar filtro</Btn>}
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 10 }}>
+          <Select label="Comprador" value={filtro.buyer} onChange={v => setFiltro(f => ({ ...f, buyer: v }))} options={[{ value: "", label: "Todos" }, ...buyerNames.map(b => ({ value: b, label: b }))]} />
+          <Select label="Produto" value={filtro.type} onChange={v => setFiltro(f => ({ ...f, type: v }))} options={[{ value: "", label: "Todos" }, ...types]} />
+          <Select label="Pagamento" value={filtro.payStatus} onChange={v => setFiltro(f => ({ ...f, payStatus: v }))} options={[{ value: "", label: "Todos" }, { value: "a_receber", label: "A receber" }, { value: "recebido", label: "Recebido" }]} />
+          <Select label="Local" value={filtro.local} onChange={v => setFiltro(f => ({ ...f, local: v }))} options={[{ value: "", label: "Todos" }, ...LOCAIS]} />
+          <Select label="Entregou" value={filtro.entregador} onChange={v => setFiltro(f => ({ ...f, entregador: v }))} options={[{ value: "", label: "Todos" }, ...ENTREGADORES]} />
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", gap: 10, marginTop: 14 }}>
+          {resumoFiltro.map(b => (
+            <div key={b.label} style={{ background: C.bg, borderRadius: 10, padding: "10px 12px" }}>
+              <div style={{ fontSize: 11, color: C.muted, fontWeight: 600 }}>{b.label}</div>
+              <div style={{ fontSize: 18, fontWeight: 800, color: b.cor }}>{b.valor}</div>
+            </div>
+          ))}
+        </div>
+      </Card>
       <Card><Table cols={[
         { key: "date", label: "Data", render: r => fmtDate(r.date) }, { key: "type", label: "Produto", render: r => <Badge color={r.type === "polpa" ? C.accentDark : C.primary}>{types.find(t => t.value === r.type)?.label}</Badge> },
-        { key: "buyer", label: "Comprador" }, { key: "qty", label: "Qtd", sortValue: r => saleKg(r), render: r => isCaixa(r) ? `${r.qty} cx (${fmt(saleKg(r), 0)} kg)` : `${r.qty} ${r.unit}` }, { key: "unitPrice", label: "Preço", render: r => fmtMoney(r.unitPrice) },
+        { key: "buyer", label: "Comprador" }, { key: "local", label: "Local/Entrega", render: r => [localLabel(r.local), entregadorLabel(r.entregador)].filter(Boolean).join(" · ") || "-" }, { key: "qty", label: "Qtd", sortValue: r => saleKg(r), render: r => isCaixa(r) ? `${r.qty} cx (${fmt(saleKg(r), 0)} kg)` : `${r.qty} ${r.unit}` }, { key: "unitPrice", label: "Preço", render: r => fmtMoney(r.unitPrice) },
         { key: "total", label: "Total", render: r => <strong style={{ color: C.primary }}>{fmtMoney(r.total)}</strong> },
         { key: "pay", label: "Pagamento", sortValue: r => (r.payStatus === "recebido" ? "1 recebido" : "0 a receber"), render: r => (
           <div style={{ display: "flex", flexDirection: "column", gap: 2, alignItems: "flex-start" }}>
@@ -76,7 +122,7 @@ export default function FruitSales({ data, setData }) {
             ? <Btn size="sm" variant="ghost" onClick={() => togglePay(r.id)}>↩ Desfazer</Btn>
             : <Btn size="sm" variant="accent" onClick={() => togglePay(r.id)}><Icon name="check" size={14} color="#1A2E1A" /> Receber</Btn>}
           onEdit={() => openEdit(r)} onCopy={() => openCopy(r)} onDelete={() => setData(d => ({ ...d, fruitSales: d.fruitSales.filter(x => x.id !== r.id) }))} /> },
-      ]} rows={data.fruitSales} /></Card>
+      ]} rows={vendasFiltradas} empty={temFiltro ? "Nenhuma venda com esse filtro." : "Nenhuma venda lançada."} /></Card>
       <Card style={{ marginTop: 16 }}>
         <h4 style={{ margin: "0 0 12px", color: C.text, fontSize: 15 }}>🧾 Registro por comprador</h4>
         <Table cols={[
@@ -96,6 +142,10 @@ export default function FruitSales({ data, setData }) {
           <Select label="Situação" value={form.payStatus} onChange={v => setForm(f => ({ ...f, payStatus: v }))} options={[{ value: "a_receber", label: "A receber" }, { value: "recebido", label: "Recebido" }]} />
           <Select label="Forma" value={form.payMethod} onChange={v => setForm(f => ({ ...f, payMethod: v }))} options={[{ value: "pix", label: "Pix" }, { value: "dinheiro", label: "Dinheiro" }]} />
           <Select label="Dinheiro com" value={form.holder} onChange={v => setForm(f => ({ ...f, holder: v }))} options={[{ value: "comigo", label: "Comigo" }, { value: "matheus", label: "Matheus" }]} />
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+          <Select label="Local da venda" value={form.local} onChange={v => setForm(f => ({ ...f, local: v }))} options={LOCAIS} />
+          <Select label="Entregou" value={form.entregador} onChange={v => setForm(f => ({ ...f, entregador: v }))} options={ENTREGADORES} />
         </div>
         {form.unit === "caixa" && Number(form.qty) > 0 && (
           <div style={{ background: C.green50, borderRadius: 8, padding: "8px 12px", fontSize: 13, color: C.textSoft }}>
