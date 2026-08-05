@@ -10,7 +10,7 @@ const ENTREGADORES = [{ value: "eu", label: "Eu" }, { value: "matheus", label: "
 const localLabel = (v) => (LOCAIS.find(l => l.value === v) || {}).label || "";
 const entregadorLabel = (v) => (ENTREGADORES.find(e => e.value === v) || {}).label || "";
 const EMPTY_FILTRO = { buyer: "", type: "", payStatus: "", local: "", entregador: "" };
-const EMPTY_FORM = { date: "", type: "verde", buyer: "", qty: "", unit: "kg", unitPrice: "", notes: "", payStatus: "a_receber", payMethod: "pix", holder: "comigo", local: "roça", entregador: "eu" };
+const EMPTY_FORM = { date: "", type: "verde", buyer: "", qty: "", unit: "kg", unitPrice: "", notes: "", payStatus: "a_receber", payMethod: "pix", holder: "comigo", local: "roça", entregador: "" };
 
 export default function FruitSales({ data, setData }) {
   const [modal, setModal] = useState(null); // null | "new" | "edit"
@@ -23,8 +23,10 @@ export default function FruitSales({ data, setData }) {
   const openCopy = (r) => { const { id, ...rest } = r; setForm({ ...EMPTY_FORM, ...rest, unit: isCaixa(r) ? "caixa" : (r.unit || "kg"), date: today() }); setModal("copy"); };
   const save = () => {
     const total = Number(form.qty) * Number(form.unitPrice);
-    if (modal === "edit") setData(d => ({ ...d, fruitSales: d.fruitSales.map(x => x.id === form.id ? { ...form, total } : x) }));
-    else setData(d => ({ ...d, fruitSales: [{ ...form, total, id: uid() }, ...d.fruitSales] }));
+    // Entregador só se aplica quando a venda foi na cidade
+    const base = { ...form, entregador: form.local === "cidade" ? form.entregador : "", total };
+    if (modal === "edit") setData(d => ({ ...d, fruitSales: d.fruitSales.map(x => x.id === form.id ? base : x) }));
+    else setData(d => ({ ...d, fruitSales: [{ ...base, id: uid() }, ...d.fruitSales] }));
     setModal(null);
   };
   const totalKg = data.fruitSales.reduce((s, x) => s + saleKg(x), 0);
@@ -143,9 +145,9 @@ export default function FruitSales({ data, setData }) {
           <Select label="Forma" value={form.payMethod} onChange={v => setForm(f => ({ ...f, payMethod: v }))} options={[{ value: "pix", label: "Pix" }, { value: "dinheiro", label: "Dinheiro" }]} />
           <Select label="Dinheiro com" value={form.holder} onChange={v => setForm(f => ({ ...f, holder: v }))} options={[{ value: "comigo", label: "Comigo" }, { value: "matheus", label: "Matheus" }]} />
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-          <Select label="Local da venda" value={form.local} onChange={v => setForm(f => ({ ...f, local: v }))} options={LOCAIS} />
-          <Select label="Entregou" value={form.entregador} onChange={v => setForm(f => ({ ...f, entregador: v }))} options={ENTREGADORES} />
+        <div style={{ display: "grid", gridTemplateColumns: form.local === "cidade" ? "1fr 1fr" : "1fr", gap: 10 }}>
+          <Select label="Local da venda" value={form.local} onChange={v => setForm(f => ({ ...f, local: v, entregador: v === "cidade" ? (f.entregador || "eu") : "" }))} options={LOCAIS} />
+          {form.local === "cidade" && <Select label="Entregou" value={form.entregador} onChange={v => setForm(f => ({ ...f, entregador: v }))} options={ENTREGADORES} />}
         </div>
         {form.unit === "caixa" && Number(form.qty) > 0 && (
           <div style={{ background: C.green50, borderRadius: 8, padding: "8px 12px", fontSize: 13, color: C.textSoft }}>
