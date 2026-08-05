@@ -1,6 +1,6 @@
 import * as XLSX from "xlsx";
 import { today } from "./format";
-import { saleKg, buyerSummary, CAIXA_KG } from "./sales";
+import { saleKg, buyerSummary, CAIXA_KG, COMISSAO_CAIXA_MATHEUS } from "./sales";
 import { workerSummary, counterSummary } from "./registros";
 
 // ─── EXCEL EXPORT ─────────────────────────────────────────────────────────────
@@ -20,6 +20,7 @@ export function exportToExcel(data) {
   const materials = data.materialTransactions.filter(x => x.type === "compra").reduce((s, x) => s + Number(x.total || 0), 0);
   const totalCusto = insumos + labor + energy + materials;
   const totalKg = data.fruitSales.reduce((s, x) => s + saleKg(x), 0);
+  const caixasMatheus = data.fruitSales.filter(x => x.entregador === "matheus").reduce((s, x) => s + saleKg(x) / CAIXA_KG, 0);
   const rnd = (v) => Math.round(v * 100) / 100;
   const perKg = (v) => (totalKg > 0 ? rnd(v / totalKg) : 0);
   sheet("Resumo", [
@@ -36,6 +37,8 @@ export function exportToExcel(data) {
     { Indicador: "  Mão de obra por kg (R$/kg)", Valor: perKg(labor) },
     { Indicador: "  Energia por kg (R$/kg)", Valor: perKg(energy) },
     { Indicador: "  Materiais por kg (R$/kg)", Valor: perKg(materials) },
+    { Indicador: "Comissao Matheus - caixas entregues na cidade", Valor: rnd(caixasMatheus) },
+    { Indicador: "Comissao Matheus - a pagar (R$)", Valor: rnd(caixasMatheus * COMISSAO_CAIXA_MATHEUS) },
   ]);
   sheet("Estoque", data.stockItems.map(s => ({ Produto: s.name, Categoria: s.category, Quantidade: s.qty, Unidade: s.unit, "Estoque Min": s.minQty })));
   sheet("Insumos", data.inputPurchases.map(x => ({ Operacao: x.type, Data: x.date, Produto: x.name, "Tipo produto": x.tipo || "", Descricao: x.description, Contraparte: x.counter, Qtd: x.qty, Unid: x.unit, "Preco Unit": x.unitPrice, Total: x.total, NF: x.nf })));

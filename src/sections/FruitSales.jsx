@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { C } from "../ui/theme";
 import { uid, today, fmt, fmtDate, fmtMoney } from "../lib/format";
-import { CAIXA_KG, isCaixa, saleKg, buyerSummary, paymentSummary } from "../lib/sales";
+import { CAIXA_KG, COMISSAO_CAIXA_MATHEUS, isCaixa, saleKg, buyerSummary, paymentSummary } from "../lib/sales";
 import { Card, Btn, Badge, Icon, Input, Select, Modal, Table, StatCard, RowActions } from "../ui";
 
 // ─── FruitSales ──────────────────────────────────────────────────────────────
@@ -37,6 +37,10 @@ export default function FruitSales({ data, setData }) {
   const precoMedioKg = totalKg > 0 ? totalValue / totalKg : 0;
   const precoMedioCaixa = precoMedioKg * CAIXA_KG;
   const precoKg = isCaixa(form) && Number(form.unitPrice) > 0 ? Number(form.unitPrice) / CAIXA_KG : null;
+
+  // Comissão do Matheus: R$ por caixa entregue na cidade
+  const caixasMatheus = data.fruitSales.filter(x => x.entregador === "matheus").reduce((s, x) => s + saleKg(x) / CAIXA_KG, 0);
+  const comissaoMatheus = caixasMatheus * COMISSAO_CAIXA_MATHEUS;
 
   // Filtro / relatório
   const [filtro, setFiltro] = useState(EMPTY_FILTRO);
@@ -86,6 +90,26 @@ export default function FruitSales({ data, setData }) {
           ))}
         </div>
       </Card>
+      {caixasMatheus > 0 && (
+        <Card style={{ marginBottom: 16 }}>
+          <h4 style={{ margin: "0 0 12px", color: C.text, fontSize: 15 }}>🚚 Comissão de entrega — Matheus</h4>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 10 }}>
+            <div style={{ background: C.bg, borderRadius: 10, padding: "10px 12px" }}>
+              <div style={{ fontSize: 11, color: C.muted, fontWeight: 600 }}>Caixas entregues (cidade)</div>
+              <div style={{ fontSize: 18, fontWeight: 800, color: C.text }}>{fmt(caixasMatheus, 1)}</div>
+            </div>
+            <div style={{ background: C.bg, borderRadius: 10, padding: "10px 12px" }}>
+              <div style={{ fontSize: 11, color: C.muted, fontWeight: 600 }}>Por caixa</div>
+              <div style={{ fontSize: 18, fontWeight: 800, color: C.text }}>{fmtMoney(COMISSAO_CAIXA_MATHEUS)}</div>
+            </div>
+            <div style={{ background: C.dangerLight, borderRadius: 10, padding: "10px 12px" }}>
+              <div style={{ fontSize: 11, color: C.muted, fontWeight: 600 }}>A pagar ao Matheus</div>
+              <div style={{ fontSize: 18, fontWeight: 800, color: C.danger }}>{fmtMoney(comissaoMatheus)}</div>
+            </div>
+          </div>
+          <div style={{ marginTop: 10, fontSize: 12, color: C.muted }}>{fmtMoney(COMISSAO_CAIXA_MATHEUS)} por caixa de {CAIXA_KG} kg entregue na cidade pelo Matheus.</div>
+        </Card>
+      )}
       <Card style={{ marginBottom: 16 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
           <h4 style={{ margin: 0, color: C.text, fontSize: 15 }}>🔎 Filtrar / Relatório</h4>

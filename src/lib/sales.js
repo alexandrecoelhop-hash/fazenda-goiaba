@@ -1,5 +1,7 @@
 // Conversão de unidades da venda de frutas: 1 caixa de goiaba = 30 kg
 export const CAIXA_KG = 30;
+// Comissão do Matheus por caixa entregue na cidade (fácil de ajustar aqui)
+export const COMISSAO_CAIXA_MATHEUS = 5;
 // Aceita variações antigas digitadas à mão ("Caixa", "caixa ", etc.)
 export const isCaixa = (x) => String(x.unit || "").trim().toLowerCase() === "caixa";
 export const saleKg = (x) => Number(x.qty || 0) * (isCaixa(x) ? CAIXA_KG : 1);
