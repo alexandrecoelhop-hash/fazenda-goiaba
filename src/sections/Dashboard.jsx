@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { C, CHART_COLORS } from "../ui/theme";
 import { fmt, fmtMoney, fmtDate, monthKey, today } from "../lib/format";
-import { saleKg } from "../lib/sales";
+import { saleKg, CAIXA_KG } from "../lib/sales";
 import { PLANTAS_PRODUZINDO } from "../lib/fazenda";
 import { Card, StatCard, Badge, Modal } from "../ui";
 
@@ -29,6 +29,7 @@ export default function Dashboard({ data }) {
   // Quanto ainda falta produzir para cobrir o que já foi gasto (ao preço médio de venda)
   const precoMedioKg = totalKg > 0 ? receita / totalKg : 0;
   const faltaKg = precoMedioKg > 0 ? Math.max(0, totalCustos / precoMedioKg - totalKg) : 0;
+  const caixasPorPlanta = PLANTAS_PRODUZINDO > 0 ? (totalKg / CAIXA_KG) / PLANTAS_PRODUZINDO : 0;
 
   const monthly = useMemo(() => {
     const m = {};
@@ -74,7 +75,7 @@ export default function Dashboard({ data }) {
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
       <div style={{ background: C.green50, border: `1px solid ${C.border}`, borderRadius: 10, padding: "10px 14px", fontSize: 13, color: C.textSoft, display: "flex", alignItems: "center", gap: 8 }}>
         <span style={{ fontSize: 16 }}>🌱</span>
-        <span>Hoje temos <strong style={{ color: C.primary }}>{fmt(PLANTAS_PRODUZINDO, 0)} goiabeiras</strong> em produção.</span>
+        <span>Hoje temos <strong style={{ color: C.primary }}>{fmt(PLANTAS_PRODUZINDO, 0)} goiabeiras</strong> em produção{totalKg > 0 && <> — média de <strong style={{ color: C.primary }}>{fmt(caixasPorPlanta, 2)} caixas/planta</strong></>}.</span>
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 16 }}>
         <StatCard label="Receita com Frutas" value={fmtMoney(receita)} icon="fruit" color={C.primary} onClick={() => setDetalhe("receita")} />
