@@ -9,7 +9,7 @@ const LOCAIS = [{ value: "roça", label: "Roça" }, { value: "cidade", label: "C
 const ENTREGADORES = [{ value: "eu", label: "Eu" }, { value: "matheus", label: "Matheus" }];
 const localLabel = (v) => (LOCAIS.find(l => l.value === v) || {}).label || "";
 const entregadorLabel = (v) => (ENTREGADORES.find(e => e.value === v) || {}).label || "";
-const EMPTY_FILTRO = { buyer: "", type: "", payStatus: "", local: "", entregador: "" };
+const EMPTY_FILTRO = { buyer: "", type: "", payStatus: "", local: "", entregador: "", holder: "" };
 const EMPTY_FORM = { date: "", type: "verde", buyer: "", qty: "", unit: "kg", unitPrice: "", notes: "", payStatus: "a_receber", payMethod: "pix", holder: "comigo", local: "roça", entregador: "" };
 
 export default function FruitSales({ data, setData }) {
@@ -44,13 +44,14 @@ export default function FruitSales({ data, setData }) {
 
   // Filtro / relatório
   const [filtro, setFiltro] = useState(EMPTY_FILTRO);
-  const temFiltro = filtro.buyer || filtro.type || filtro.payStatus || filtro.local || filtro.entregador;
+  const temFiltro = filtro.buyer || filtro.type || filtro.payStatus || filtro.local || filtro.entregador || filtro.holder;
   const vendasFiltradas = data.fruitSales.filter(x =>
     (!filtro.buyer || (x.buyer || "").trim() === filtro.buyer) &&
     (!filtro.type || x.type === filtro.type) &&
     (!filtro.payStatus || (x.payStatus === "recebido" ? "recebido" : "a_receber") === filtro.payStatus) &&
     (!filtro.local || (x.local || "") === filtro.local) &&
-    (!filtro.entregador || (x.entregador || "") === filtro.entregador)
+    (!filtro.entregador || (x.entregador || "") === filtro.entregador) &&
+    (!filtro.holder || (x.holder || "comigo") === filtro.holder)
   );
   const fKg = vendasFiltradas.reduce((s, x) => s + saleKg(x), 0);
   const fTotal = vendasFiltradas.reduce((s, x) => s + Number(x.total || 0), 0);
@@ -121,6 +122,7 @@ export default function FruitSales({ data, setData }) {
           <Select label="Pagamento" value={filtro.payStatus} onChange={v => setFiltro(f => ({ ...f, payStatus: v }))} options={[{ value: "", label: "Todos" }, { value: "a_receber", label: "A receber" }, { value: "recebido", label: "Recebido" }]} />
           <Select label="Local" value={filtro.local} onChange={v => setFiltro(f => ({ ...f, local: v }))} options={[{ value: "", label: "Todos" }, ...LOCAIS]} />
           <Select label="Entregou" value={filtro.entregador} onChange={v => setFiltro(f => ({ ...f, entregador: v }))} options={[{ value: "", label: "Todos" }, ...ENTREGADORES]} />
+          <Select label="Dinheiro com" value={filtro.holder} onChange={v => setFiltro(f => ({ ...f, holder: v }))} options={[{ value: "", label: "Todos" }, { value: "comigo", label: "Comigo" }, { value: "matheus", label: "Matheus" }]} />
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", gap: 10, marginTop: 14 }}>
           {resumoFiltro.map(b => (
