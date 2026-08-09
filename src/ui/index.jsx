@@ -97,6 +97,37 @@ export const StatCard = ({ label, value, color = C.primary, icon, sub, onClick }
     {onClick && <div style={{ marginLeft: "auto", alignSelf: "center", color: C.muted, fontSize: 20, lineHeight: 1 }}>›</div>}
   </Card>
 );
+// Painel de filtro/relatório reutilizável.
+// fields: [{ key, label, options:[{value,label}] }] — a opção "Todos" é adicionada sozinha.
+// value: objeto do estado do filtro; onChange recebe o objeto novo.
+// resumo (opcional): [{ label, valor, cor }] — caixinhas de totais do que foi filtrado.
+export const Filtro = ({ fields, value, onChange, resumo }) => {
+  const tem = fields.some(f => value[f.key]);
+  const limpar = () => onChange(Object.fromEntries(fields.map(f => [f.key, ""])));
+  return (
+    <Card style={{ marginBottom: 16 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
+        <h4 style={{ margin: 0, color: C.text, fontSize: 15 }}>🔎 Filtrar / Relatório</h4>
+        {tem && <Btn size="sm" variant="ghost" onClick={limpar}>Limpar filtro</Btn>}
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 10 }}>
+        {fields.map(f => (
+          <Select key={f.key} label={f.label} value={value[f.key] || ""} onChange={v => onChange({ ...value, [f.key]: v })} options={[{ value: "", label: "Todos" }, ...f.options]} />
+        ))}
+      </div>
+      {resumo && resumo.length > 0 && (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", gap: 10, marginTop: 14 }}>
+          {resumo.map(b => (
+            <div key={b.label} style={{ background: C.bg, borderRadius: 10, padding: "10px 12px" }}>
+              <div style={{ fontSize: 11, color: C.muted, fontWeight: 600 }}>{b.label}</div>
+              <div style={{ fontSize: 18, fontWeight: 800, color: b.cor || C.text }}>{b.valor}</div>
+            </div>
+          ))}
+        </div>
+      )}
+    </Card>
+  );
+};
 export const Table = ({ cols, rows, empty = "Nenhum registro." }) => {
   const isMobile = useIsMobile();
   const [sort, setSort] = useState(null); // { key, dir: "asc" | "desc" }

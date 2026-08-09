@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { C } from "../ui/theme";
 import { uid, today, fmtDate } from "../lib/format";
-import { listaSugestoes, valvulaOptions } from "../lib/registros";
-import { Card, Btn, Badge, Icon, Input, Select, Modal, Table, RowActions } from "../ui";
+import { listaSugestoes, valvulaOptions, nomesUsados } from "../lib/registros";
+import { Card, Btn, Badge, Icon, Input, Select, Modal, Table, RowActions, Filtro } from "../ui";
 
 // ─── Agronomic ───────────────────────────────────────────────────────────────
 const EMPTY = { date: "", type: "poda", talhao: "", title: "", product: "", dose: "", area: "", notes: "", nextDate: "" };
@@ -23,15 +23,28 @@ export default function Agronomic({ data, setData }) {
   const sorted = [...data.agronomicEvents].sort((a, b) => b.date.localeCompare(a.date));
   const valvulas = valvulaOptions(data.agronomicEvents.map(e => e.talhao), data.applications.map(a => a.talhao));
   const produtos = listaSugestoes([], data.agronomicEvents.map(e => e.product), data.inputPurchases.map(i => i.name));
+  const [filtro, setFiltro] = useState({ talhao: "", type: "" });
+  const filtrados = sorted.filter(x =>
+    (!filtro.talhao || (x.talhao || "") === filtro.talhao) &&
+    (!filtro.type || x.type === filtro.type)
+  );
   return (
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 20 }}><h2 style={{ margin: 0, color: C.text }}>Manejo Agronômico</h2><Btn onClick={openNew}><Icon name="plus" size={16} color="#fff" /> Novo Evento</Btn></div>
+      <Filtro
+        fields={[
+          { key: "talhao", label: "Válvula", options: nomesUsados(data.agronomicEvents, "talhao").map(v => ({ value: v, label: v })) },
+          { key: "type", label: "Tipo", options: types },
+        ]}
+        value={filtro} onChange={setFiltro}
+        resumo={[{ label: "Eventos", valor: String(filtrados.length) }]}
+      />
       <Card><Table cols={[
         { key: "date", label: "Data", render: r => fmtDate(r.date) }, { key: "type", label: "Tipo", render: r => <Badge color={colors[r.type]}>{types.find(t => t.value === r.type)?.label || r.type}</Badge> },
         { key: "talhao", label: "Válvula" }, { key: "title", label: "Descrição" }, { key: "product", label: "Produto" }, { key: "dose", label: "Dose/Lâmina" }, { key: "area", label: "ha" },
         { key: "nextDate", label: "Próxima", render: r => r.nextDate ? fmtDate(r.nextDate) : "-" }, { key: "notes", label: "Obs" },
         { key: "acoes", label: "", render: r => <RowActions onEdit={() => openEdit(r)} onCopy={() => openCopy(r)} onDelete={() => setData(d => ({ ...d, agronomicEvents: d.agronomicEvents.filter(x => x.id !== r.id) }))} /> },
-      ]} rows={sorted} /></Card>
+      ]} rows={filtrados} empty="Nenhum evento com esse filtro." /></Card>
       {modal && <Modal title={modal === "edit" ? "Editar — Evento de Manejo" : modal === "copy" ? "Copiar — Evento de Manejo" : "Evento de Manejo"} onClose={() => setModal(null)}><div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         <Input label="Data" type="date" value={form.date} onChange={v => setForm(f => ({ ...f, date: v }))} />
         <Select label="Tipo" value={form.type} onChange={v => setForm(f => ({ ...f, type: v }))} options={types} />

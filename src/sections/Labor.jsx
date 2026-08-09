@@ -2,7 +2,7 @@ import { useState } from "react";
 import { C } from "../ui/theme";
 import { uid, today, fmt, fmtDate, fmtMoney } from "../lib/format";
 import { nomesUsados, workerSummary } from "../lib/registros";
-import { Card, Btn, Badge, Icon, Input, Select, Modal, Table, StatCard, RowActions } from "../ui";
+import { Card, Btn, Badge, Icon, Input, Select, Modal, Table, StatCard, RowActions, Filtro } from "../ui";
 
 // ─── Labor ───────────────────────────────────────────────────────────────────
 const EMPTY = { date: "", worker: "", service: "", days: "", dailyRate: "", type: "diarista", notes: "" };
@@ -24,16 +24,37 @@ export default function Labor({ data, setData }) {
   const trabalhadores = workerSummary(data.laborEntries);
   const nomes = nomesUsados(data.laborEntries, "worker");
   const servicos = nomesUsados(data.laborEntries, "service");
+  const [filtro, setFiltro] = useState({ worker: "", service: "", type: "" });
+  const filtrados = data.laborEntries.filter(x =>
+    (!filtro.worker || (x.worker || "") === filtro.worker) &&
+    (!filtro.service || (x.service || "") === filtro.service) &&
+    (!filtro.type || x.type === filtro.type)
+  );
+  const fTotal = filtrados.reduce((s, x) => s + Number(x.total || 0), 0);
+  const fDias = filtrados.reduce((s, x) => s + Number(x.days || 0), 0);
   return (
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 20 }}><h2 style={{ margin: 0, color: C.text }}>Mão de Obra</h2><Btn onClick={openNew}><Icon name="plus" size={16} color="#fff" /> Novo</Btn></div>
       <div style={{ marginBottom: 16 }}><StatCard label="Total M.O." value={fmtMoney(totalLabor)} icon="labor" color={C.purple} /></div>
+      <Filtro
+        fields={[
+          { key: "worker", label: "Trabalhador", options: nomes.map(n => ({ value: n, label: n })) },
+          { key: "service", label: "Serviço", options: servicos.map(s => ({ value: s, label: s })) },
+          { key: "type", label: "Tipo", options: types.map(t => ({ value: t, label: t })) },
+        ]}
+        value={filtro} onChange={setFiltro}
+        resumo={[
+          { label: "Lançamentos", valor: String(filtrados.length) },
+          { label: "Dias/Qtd", valor: fmt(fDias, 0) },
+          { label: "Total pago", valor: fmtMoney(fTotal), cor: C.purple },
+        ]}
+      />
       <Card><Table cols={[
         { key: "date", label: "Data", render: r => fmtDate(r.date) }, { key: "worker", label: "Trabalhador" }, { key: "service", label: "Serviço" },
         { key: "type", label: "Tipo", render: r => <Badge color={C.purple}>{r.type}</Badge> }, { key: "days", label: "Dias/Qtd" },
         { key: "dailyRate", label: "Valor", render: r => fmtMoney(r.dailyRate) }, { key: "total", label: "Total", render: r => <strong>{fmtMoney(r.total)}</strong> },
         { key: "notes", label: "Obs" }, { key: "acoes", label: "", render: r => <RowActions onEdit={() => openEdit(r)} onCopy={() => openCopy(r)} onDelete={() => setData(d => ({ ...d, laborEntries: d.laborEntries.filter(x => x.id !== r.id) }))} /> },
-      ]} rows={data.laborEntries} /></Card>
+      ]} rows={filtrados} empty="Nenhum lançamento com esse filtro." /></Card>
       <Card style={{ marginTop: 16 }}>
         <h4 style={{ margin: "0 0 12px", color: C.text, fontSize: 15 }}>👷 Registro por trabalhador</h4>
         <Table cols={[
