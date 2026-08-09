@@ -2,7 +2,7 @@ import { useState } from "react";
 import { C } from "../ui/theme";
 import { uid, today, fmt, fmtDate, fmtMoney } from "../lib/format";
 import { nomesUsados, counterSummary, listaSugestoes, TIPOS_PRODUTO } from "../lib/registros";
-import { Card, Btn, Icon, Input, Select, Modal, Table, RowActions } from "../ui";
+import { Card, Btn, Icon, Input, Select, Modal, Table, RowActions, Filtro } from "../ui";
 
 // Unidades "embalagem" que contêm uma quantidade de uma unidade base (kg ou L)
 const PACK_CFG = {
@@ -56,6 +56,14 @@ export default function TradeSection({ title, listKey, itemLabel, data, setData,
     return arr;
   })();
   const rotuloContraparte = tab === "compra" ? "Fornecedor / Loja" : "Comprador";
+  const tiposUsados = nomesUsados(data[listKey], "tipo");
+  const [filtro, setFiltro] = useState({ name: "", tipo: "", counter: "" });
+  const listaFiltrada = list.filter(x =>
+    (!filtro.name || (x.name || "") === filtro.name) &&
+    (!filtro.tipo || (x.tipo || "") === filtro.tipo) &&
+    (!filtro.counter || (x.counter || "") === filtro.counter)
+  );
+  const fTotal = listaFiltrada.reduce((s, x) => s + Number(x.total || 0), 0);
   const openNew = () => { setForm({ ...EMPTY, type: tab, date: today() }); setModal("new"); };
   const openEdit = (r) => { setForm({ ...EMPTY, ...r, unit: normUnit(r.unit) }); setModal("edit"); };
   const openCopy = (r) => { const { id, ...rest } = r; setForm({ ...EMPTY, ...rest, unit: normUnit(rest.unit), date: today() }); setModal("copy"); };
@@ -86,6 +94,18 @@ export default function TradeSection({ title, listKey, itemLabel, data, setData,
       <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
         {["compra", "venda"].map(t => <button key={t} onClick={() => setTab(t)} style={{ padding: "8px 20px", borderRadius: 8, border: `2px solid ${tab === t ? C.primary : C.border}`, background: tab === t ? C.primary : "transparent", color: tab === t ? "#fff" : C.muted, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>{t[0].toUpperCase() + t.slice(1)}</button>)}
       </div>
+      <Filtro
+        fields={[
+          { key: "name", label: itemLabel, options: nomesItens.map(n => ({ value: n, label: n })) },
+          { key: "tipo", label: "Tipo", options: tiposUsados.map(t => ({ value: t, label: t })) },
+          { key: "counter", label: rotuloContraparte, options: nomesContraparte.map(n => ({ value: n, label: n })) },
+        ]}
+        value={filtro} onChange={setFiltro}
+        resumo={[
+          { label: "Lançamentos", valor: String(listaFiltrada.length) },
+          { label: tab === "compra" ? "Total gasto" : "Total recebido", valor: fmtMoney(fTotal), cor: tab === "compra" ? C.danger : C.primary },
+        ]}
+      />
       <Card>
         <Table cols={[
           { key: "date", label: "Data", render: r => fmtDate(r.date) },
@@ -98,7 +118,7 @@ export default function TradeSection({ title, listKey, itemLabel, data, setData,
           { key: "total", label: "Total", render: r => <strong>{fmtMoney(r.total)}</strong> },
           { key: "nf", label: "NF" },
           { key: "acoes", label: "", render: r => <RowActions onEdit={() => openEdit(r)} onCopy={() => openCopy(r)} onDelete={() => setData(d => ({ ...d, [listKey]: d[listKey].filter(x => x.id !== r.id) }))} /> },
-        ]} rows={list} />
+        ]} rows={listaFiltrada} empty="Nenhum lançamento com esse filtro." />
       </Card>
       <Card style={{ marginTop: 16 }}>
         <h4 style={{ margin: "0 0 12px", color: C.text, fontSize: 15 }}>🏪 Registro por {tab === "compra" ? "loja / fornecedor" : "comprador"}</h4>

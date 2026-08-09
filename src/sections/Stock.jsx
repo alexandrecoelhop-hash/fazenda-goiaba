@@ -2,7 +2,7 @@ import { useState } from "react";
 import { C } from "../ui/theme";
 import { uid } from "../lib/format";
 import { listaSugestoes, UNIDADES_COMUNS } from "../lib/registros";
-import { Card, Btn, Badge, Icon, Input, Select, Modal, Table, RowActions } from "../ui";
+import { Card, Btn, Badge, Icon, Input, Select, Modal, Table, RowActions, Filtro } from "../ui";
 
 // ─── Stock ───────────────────────────────────────────────────────────────────
 export default function Stock({ data, setData }) {
@@ -11,6 +11,12 @@ export default function Stock({ data, setData }) {
   const cats = ["insumo", "defensivo", "material", "embalagem", "ferramenta", "outro"];
   const nomes = listaSugestoes([], data.stockItems.map(s => s.name), data.inputPurchases.map(i => i.name));
   const unidades = listaSugestoes(UNIDADES_COMUNS, data.stockItems.map(s => s.unit));
+  const [filtro, setFiltro] = useState({ category: "", status: "" });
+  const filtrados = data.stockItems.filter(x => {
+    const baixo = Number(x.qty) <= Number(x.minQty || 0);
+    return (!filtro.category || x.category === filtro.category) && (!filtro.status || (baixo ? "baixo" : "ok") === filtro.status);
+  });
+  const emAlerta = filtrados.filter(x => Number(x.qty) <= Number(x.minQty || 0)).length;
   const save = () => {
     if (!form.name || !form.qty) return;
     if (modal === "edit") setData(d => ({ ...d, stockItems: d.stockItems.map(i => i.id === form.id ? form : i) }));
@@ -23,6 +29,17 @@ export default function Stock({ data, setData }) {
         <h2 style={{ margin: 0, color: C.text }}>Estoque</h2>
         <Btn onClick={() => { setForm({ name: "", category: "insumo", unit: "kg", qty: "", minQty: "" }); setModal("new"); }}><Icon name="plus" size={16} color="#fff" /> Novo Item</Btn>
       </div>
+      <Filtro
+        fields={[
+          { key: "category", label: "Categoria", options: cats.map(c => ({ value: c, label: c })) },
+          { key: "status", label: "Status", options: [{ value: "baixo", label: "Baixo" }, { value: "ok", label: "OK" }] },
+        ]}
+        value={filtro} onChange={setFiltro}
+        resumo={[
+          { label: "Itens", valor: String(filtrados.length) },
+          { label: "Em alerta", valor: String(emAlerta), cor: emAlerta ? C.danger : C.text },
+        ]}
+      />
       <Card>
         <Table cols={[
           { key: "name", label: "Produto" },
@@ -31,7 +48,7 @@ export default function Stock({ data, setData }) {
           { key: "minQty", label: "Mín.", render: r => `${r.minQty || 0} ${r.unit}` },
           { key: "status", label: "Status", render: r => Number(r.qty) <= Number(r.minQty || 0) ? <Badge color={C.danger}>Baixo</Badge> : <Badge color={C.primaryLight}>OK</Badge> },
           { key: "a", label: "", render: r => <RowActions onEdit={() => { setForm(r); setModal("edit"); }} onCopy={() => { const { id, ...rest } = r; setForm(rest); setModal("copy"); }} onDelete={() => setData(d => ({ ...d, stockItems: d.stockItems.filter(i => i.id !== r.id) }))} /> },
-        ]} rows={data.stockItems} />
+        ]} rows={filtrados} empty="Nenhum item com esse filtro." />
       </Card>
       {modal && (
         <Modal title={modal === "edit" ? "Editar Item" : modal === "copy" ? "Copiar Item" : "Novo Item"} onClose={() => setModal(null)}>

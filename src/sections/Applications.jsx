@@ -2,8 +2,8 @@ import { useState } from "react";
 import { C } from "../ui/theme";
 import { uid, today, fmtDate } from "../lib/format";
 import { PEST_DB } from "../data/pests";
-import { listaSugestoes, valvulaOptions } from "../lib/registros";
-import { Card, Btn, Badge, Icon, Input, Select, Modal, Table, RowActions } from "../ui";
+import { listaSugestoes, valvulaOptions, nomesUsados } from "../lib/registros";
+import { Card, Btn, Badge, Icon, Input, Select, Modal, Table, RowActions, Filtro } from "../ui";
 
 // ─── APLICAÇÕES (caderno de campo fitossanitário) ────────────────────────────
 const EMPTY = { date: "", talhao: "", target: "", product: "", active: "", dose: "", volume: "", carencia: "", reentry: "", applicator: "", notes: "" };
@@ -25,12 +25,27 @@ export default function Applications({ data, setData }) {
   const produtos = listaSugestoes([], data.applications.map(a => a.product), data.inputPurchases.map(i => i.name));
   const ativos = listaSugestoes([], data.applications.map(a => a.active));
   const aplicadores = listaSugestoes([], data.applications.map(a => a.applicator), data.laborEntries.map(l => l.worker));
+  const [filtro, setFiltro] = useState({ talhao: "", target: "", applicator: "" });
+  const filtradas = data.applications.filter(x =>
+    (!filtro.talhao || (x.talhao || "") === filtro.talhao) &&
+    (!filtro.target || (x.target || "") === filtro.target) &&
+    (!filtro.applicator || (x.applicator || "") === filtro.applicator)
+  );
   return (
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
         <h2 style={{ margin: 0, color: C.text }}>Caderno de Aplicações</h2>
         <Btn onClick={openNew}><Icon name="plus" size={16} color="#fff" /> Nova Aplicação</Btn>
       </div>
+      <Filtro
+        fields={[
+          { key: "talhao", label: "Válvula", options: nomesUsados(data.applications, "talhao").map(v => ({ value: v, label: v })) },
+          { key: "target", label: "Alvo", options: nomesUsados(data.applications, "target").map(v => ({ value: v, label: v })) },
+          { key: "applicator", label: "Responsável", options: nomesUsados(data.applications, "applicator").map(v => ({ value: v, label: v })) },
+        ]}
+        value={filtro} onChange={setFiltro}
+        resumo={[{ label: "Aplicações", valor: String(filtradas.length) }]}
+      />
       <Card>
         <Table cols={[
           { key: "date", label: "Data", render: r => fmtDate(r.date) },
@@ -42,7 +57,7 @@ export default function Applications({ data, setData }) {
           { key: "carencia", label: "Carência", render: r => r.carencia ? <Badge color={C.danger}>{r.carencia} d</Badge> : "-" },
           { key: "applicator", label: "Responsável" },
           { key: "acoes", label: "", render: r => <RowActions onEdit={() => openEdit(r)} onCopy={() => openCopy(r)} onDelete={() => setData(d => ({ ...d, applications: d.applications.filter(x => x.id !== r.id) }))} /> },
-        ]} rows={data.applications} />
+        ]} rows={filtradas} empty="Nenhuma aplicação com esse filtro." />
       </Card>
       {modal && (
         <Modal title={modal === "edit" ? "Editar Aplicação" : modal === "copy" ? "Copiar Aplicação" : "Registro de Aplicação"} onClose={() => setModal(null)} wide>
