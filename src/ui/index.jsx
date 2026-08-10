@@ -80,7 +80,7 @@ export const Modal = ({ title, onClose, children, wide }) => (
     <div style={{ background: C.card, borderRadius: 16, padding: 28, width: "100%", maxWidth: wide ? 720 : 520, maxHeight: "90vh", overflowY: "auto", boxShadow: "0 8px 48px rgba(0,0,0,.18)" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
         <h3 style={{ margin: 0, color: C.text, fontSize: 18 }}>{title}</h3>
-        <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: C.muted }}><Icon name="close" size={22} color={C.muted} /></button>
+        <button onClick={onClose} aria-label="Fechar" title="Fechar" style={{ background: C.bg, border: `1px solid ${C.border}`, borderRadius: 999, width: 34, height: 34, minWidth: 34, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: C.muted, fontSize: 22, lineHeight: 1, flexShrink: 0, fontFamily: "inherit", padding: 0 }}>×</button>
       </div>
       {children}
     </div>
