@@ -183,8 +183,8 @@ function FarmApp() {
             <Btn variant="accent" size="sm" onClick={() => exportToExcel(data)}><Icon name="excel" size={16} color="#1A2E1A" />{!isMobile && " Exportar Excel"}</Btn>
           </div>
         </div>
-        <div style={{ flex: 1, padding: isMobile ? 12 : 24, overflowY: "auto" }}>
-          {page === "dashboard" && <Dashboard data={data} />}
+        <div style={{ flex: 1, padding: isMobile ? 12 : 24, overflowY: "auto", overflowX: "hidden" }}>
+          {page === "dashboard" && <Dashboard data={data} onNavigate={goTo} />}
           {page === "plots" && <Plots data={data} setData={setDataUsuario} />}
           {page === "agronomic" && <Agronomic data={data} setData={setDataUsuario} />}
           {page === "fertilizer" && <FertilizerAdvisor data={data} setData={setDataUsuario} />}

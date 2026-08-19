@@ -4,7 +4,7 @@ import { C, CHART_COLORS } from "../ui/theme";
 import { fmt, fmtMoney, fmtDate, monthKey, today } from "../lib/format";
 import { saleKg, CAIXA_KG } from "../lib/sales";
 import { PLANTAS_PRODUZINDO } from "../lib/fazenda";
-import { Card, StatCard, Badge, Modal } from "../ui";
+import { Card, StatCard, Badge, Modal, Btn, Icon } from "../ui";
 
 // Linha "rótulo … valor" usada nos resumos de cada indicador
 const Linha = ({ label, valor, sub, forte, cor }) => (
@@ -16,7 +16,7 @@ const Linha = ({ label, valor, sub, forte, cor }) => (
 const TIPOS_FRUTA = { verde: "Goiaba Verde", polpa: "Polpa", madura: "Goiaba Madura", refugo: "Refugo" };
 
 // ─── DASHBOARD (com gráficos) ─────────────────────────────────────────────────
-export default function Dashboard({ data }) {
+export default function Dashboard({ data, onNavigate }) {
   const receita = data.fruitSales.reduce((s, x) => s + Number(x.total || 0), 0);
   const insumos = data.inputPurchases.filter(x => x.type === "compra").reduce((s, x) => s + Number(x.total || 0), 0);
   const labor = data.laborEntries.reduce((s, x) => s + Number(x.total || 0), 0);
@@ -73,6 +73,11 @@ export default function Dashboard({ data }) {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+      {onNavigate && (
+        <Btn onClick={() => onNavigate("fruits")} style={{ width: "100%", justifyContent: "center", padding: "14px 20px", fontSize: 16 }}>
+          <Icon name="fruit" size={20} color="#fff" /> Registrar venda de fruta
+        </Btn>
+      )}
       <div style={{ background: C.green50, border: `1px solid ${C.border}`, borderRadius: 10, padding: "10px 14px", fontSize: 13, color: C.textSoft, display: "flex", alignItems: "center", gap: 8 }}>
         <span style={{ fontSize: 16 }}>🌱</span>
         <span>Hoje temos <strong style={{ color: C.primary }}>{fmt(PLANTAS_PRODUZINDO, 0)} goiabeiras</strong> em produção{totalKg > 0 && <> — média de <strong style={{ color: C.primary }}>{fmt(caixasPorPlanta, 2)} caixas/planta</strong></>}.</span>
