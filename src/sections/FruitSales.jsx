@@ -81,9 +81,9 @@ export default function FruitSales({ data, setData }) {
         <div style={{ marginTop: 12 }}>
           <div style={{ fontSize: 12, color: C.muted, fontWeight: 600, marginBottom: 6 }}>Do recebido, com quem está</div>
           {caixa.porPessoa.map(p => (
-            <div key={p.key} style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12, padding: "7px 10px", background: C.bg, borderRadius: 8, marginBottom: 6 }}>
+            <div key={p.key} style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12, flexWrap: "wrap", padding: "7px 10px", background: C.bg, borderRadius: 8, marginBottom: 6 }}>
               <span style={{ fontSize: 13, fontWeight: 600, color: C.text }}>{p.label}</span>
-              <span style={{ textAlign: "right" }}>
+              <span style={{ textAlign: "right", minWidth: 0 }}>
                 <strong style={{ fontSize: 14, color: C.primary }}>{fmtMoney(p.total)}</strong>
                 {p.total > 0 && <span style={{ fontSize: 11, color: C.muted, display: "block" }}>pix {fmtMoney(p.pix)} · dinheiro {fmtMoney(p.dinheiro)}</span>}
               </span>
