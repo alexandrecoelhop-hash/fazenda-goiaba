@@ -20,10 +20,12 @@ import Labor from "./sections/Labor";
 import Energy from "./sections/Energy";
 import FruitSales from "./sections/FruitSales";
 import Finance from "./sections/Finance";
+import LancarVoz from "./sections/LancarVoz";
 
 // ─── NAV ─────────────────────────────────────────────────────────────────────
 const navItems = [
   { key: "dashboard", label: "Dashboard", icon: "dashboard" },
+  { key: "voz", label: "Lançar por Voz", icon: "mic" },
   { key: "plots", label: "Válvulas", icon: "plot" },
   { key: "agronomic", label: "Manejo", icon: "pruning" },
   { key: "fertilizer", label: "Adubação", icon: "fertilizer" },
@@ -199,6 +201,7 @@ function FarmApp() {
           {page === "energy" && <Energy data={data} setData={setDataUsuario} />}
           {page === "fruits" && <FruitSales data={data} setData={setDataUsuario} />}
           {page === "finance" && <Finance data={data} />}
+          {page === "voz" && <LancarVoz data={data} setData={setDataUsuario} onNavigate={goTo} />}
         </div>
       </div>
       {verErro && (

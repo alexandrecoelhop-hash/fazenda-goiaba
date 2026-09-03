@@ -74,9 +74,14 @@ export default function Dashboard({ data, onNavigate }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
       {onNavigate && (
-        <Btn onClick={() => onNavigate("fruits")} style={{ width: "100%", justifyContent: "center", padding: "14px 20px", fontSize: 16 }}>
-          <Icon name="fruit" size={20} color="#fff" /> Registrar venda de fruta
-        </Btn>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
+          <Btn onClick={() => onNavigate("fruits")} style={{ width: "100%", justifyContent: "center", padding: "14px 20px", fontSize: 16 }}>
+            <Icon name="fruit" size={20} color="#fff" /> Registrar venda de fruta
+          </Btn>
+          <Btn variant="accent" onClick={() => onNavigate("voz")} style={{ width: "100%", justifyContent: "center", padding: "14px 20px", fontSize: 16 }}>
+            <Icon name="mic" size={20} color="#1A2E1A" /> Lançar gasto por voz
+          </Btn>
+        </div>
       )}
       <div style={{ background: C.green50, border: `1px solid ${C.border}`, borderRadius: 10, padding: "10px 14px", fontSize: 13, color: C.textSoft, display: "flex", alignItems: "center", gap: 8 }}>
         <span style={{ fontSize: 16 }}>🌱</span>
